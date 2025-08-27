@@ -362,6 +362,8 @@
                 <div class="nav-user">
                     <span class="user-nickname" id="user-nickname"></span>
                     <a href="/my-page" class="btn btn-outline btn-sm">마이페이지</a>
+                    
+                    <!-- 근수 북마크 페이지 시작 -->
                     <a href="/bookmarks" class="btn btn-outline btn-sm">북마크</a>
                     <a href="/create-post" class="btn btn-primary btn-sm">글쓰기</a>
                     <a href="/admin" class="btn btn-secondary btn-sm hidden" id="admin-link">관리자</a>

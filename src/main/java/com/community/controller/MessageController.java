@@ -3,6 +3,7 @@ package com.community.controller;
 import com.community.dto.request.MessageRequest;
 import com.community.dto.response.MessageResponse;
 import com.community.mapper.CommunityMapper;
+import jakarta.servlet.http.HttpSession;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
@@ -13,6 +14,7 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/api/messages")
+@CrossOrigin(origins = "*")
 public class MessageController {
 
     @Autowired
@@ -21,58 +23,51 @@ public class MessageController {
     @PostMapping
     public ResponseEntity<Map<String, Object>> sendMessage(
             @Valid @RequestBody MessageRequest request,
-            @RequestParam(defaultValue = "13") Long senderId) {
+            HttpSession session) {
 
-        System.out.println("쪽지 전송 요청 받음:");
-        System.out.println("receiverId: " + request.getReceiverId());
-        System.out.println("senderId: " + senderId);
-        
         try {
+            Long senderId = (Long) session.getAttribute("userId");
+            if (senderId == null) {
+                return ResponseEntity.status(401).body(Map.of("status", "error", "message", "로그인이 필요합니다"));
+            }
+
+            System.out.println("쪽지 전송 요청 받음:");
+            System.out.println("receiverId: " + request.getReceiverId());
+            System.out.println("senderId: " + senderId);
+            
             List<Long> existingUserIds = messageMapper.findAllUsers().stream()
                 .map(user -> user.getId()).collect(java.util.stream.Collectors.toList());
             
             System.out.println("존재하는 사용자 IDs: " + existingUserIds);
             
-            if (!existingUserIds.contains(senderId)) {
-                senderId = existingUserIds.get(0);
-                System.out.println("senderId를 " + senderId + "로 변경");
-            }
-            
             if (!existingUserIds.contains(request.getReceiverId())) {
                 System.out.println("receiverId " + request.getReceiverId() + "가 존재하지 않음");
-                Map<String, Object> errorResponse = new HashMap<>();
-                errorResponse.put("status", "error");
-                errorResponse.put("message", "받는 사람이 존재하지 않습니다");
-                return ResponseEntity.status(400).body(errorResponse);
+                return ResponseEntity.status(400).body(Map.of("status", "error", "message", "받는 사람이 존재하지 않습니다"));
             }
             
             System.out.println("DB에 쪽지 저장 시도...");
             messageMapper.createMessage(request, senderId);
             System.out.println("DB에 쪽지 저장 완료");
 
-            Map<String, Object> response = new HashMap<>();
-            response.put("status", "success");
-            response.put("message", "쪽지가 성공적으로 전송되었습니다");
-
-            return ResponseEntity.ok(response);
+            return ResponseEntity.ok(Map.of("status", "success", "message", "쪽지가 성공적으로 전송되었습니다"));
 
         } catch (Exception e) {
             System.err.println("쪽지 전송 중 오류 발생:");
             e.printStackTrace();
             
-            Map<String, Object> errorResponse = new HashMap<>();
-            errorResponse.put("status", "error");
-            errorResponse.put("message", "쪽지 전송에 실패했습니다: " + e.getMessage());
-            
-            return ResponseEntity.status(500).body(errorResponse);
+            return ResponseEntity.status(500).body(Map.of("status", "error", "message", "쪽지 전송에 실패했습니다: " + e.getMessage()));
         }
     }
 
     @GetMapping("/received")
-    public ResponseEntity<Map<String, Object>> getReceivedMessages(
-            @RequestParam(defaultValue = "13") Long userId) {
+    public ResponseEntity<Map<String, Object>> getReceivedMessages(HttpSession session) {
         
         try {
+            Long userId = (Long) session.getAttribute("userId");
+            if (userId == null) {
+                return ResponseEntity.status(401).body(Map.of("status", "error", "message", "로그인이 필요합니다"));
+            }
+
             System.out.println("받은쪽지 조회 userId: " + userId);
             List<MessageResponse> messages = messageMapper.getReceivedMessages(userId);
 
@@ -90,10 +85,14 @@ public class MessageController {
     }
 
     @GetMapping("/sent")
-    public ResponseEntity<Map<String, Object>> getSentMessages(
-            @RequestParam(defaultValue = "13") Long userId) {
+    public ResponseEntity<Map<String, Object>> getSentMessages(HttpSession session) {
         
         try {
+            Long userId = (Long) session.getAttribute("userId");
+            if (userId == null) {
+                return ResponseEntity.status(401).body(Map.of("status", "error", "message", "로그인이 필요합니다"));
+            }
+
             System.out.println("보낸쪽지 조회 userId: " + userId);
             
             List<MessageResponse> messages = messageMapper.getSentMessages(userId);
@@ -113,12 +112,22 @@ public class MessageController {
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<MessageResponse> getMessageDetail(@PathVariable Long id) {
+    public ResponseEntity<MessageResponse> getMessageDetail(@PathVariable Long id, HttpSession session) {
         try {
+            Long userId = (Long) session.getAttribute("userId");
+            if (userId == null) {
+                return ResponseEntity.status(401).build();
+            }
+
             MessageResponse message = messageMapper.getMessageById(id);
             if (message == null) {
                 return ResponseEntity.notFound().build();
             }
+
+            if (!userId.equals(message.getSenderId()) && !userId.equals(message.getReceiverId())) {
+                return ResponseEntity.status(403).build();
+            }
+
             return ResponseEntity.ok(message);
         } catch (Exception e) {
             System.err.println("쪽지 상세 조회 중 오류:");
@@ -128,15 +137,16 @@ public class MessageController {
     }
 
     @PutMapping("/{id}/read")
-    public ResponseEntity<Map<String, String>> markAsRead(@PathVariable Long id) {
+    public ResponseEntity<Map<String, String>> markAsRead(@PathVariable Long id, HttpSession session) {
         try {
+            Long userId = (Long) session.getAttribute("userId");
+            if (userId == null) {
+                return ResponseEntity.status(401).body(Map.of("status", "error", "message", "로그인이 필요합니다"));
+            }
+
             messageMapper.markAsRead(id);
 
-            Map<String, String> response = new HashMap<>();
-            response.put("status", "success");
-            response.put("message", "쪽지를 읽음으로 표시했습니다");
-
-            return ResponseEntity.ok(response);
+            return ResponseEntity.ok(Map.of("status", "success", "message", "쪽지를 읽음으로 표시했습니다"));
         } catch (Exception e) {
             System.err.println("쪽지 읽음 처리 중 오류:");
             e.printStackTrace();
@@ -145,15 +155,16 @@ public class MessageController {
     }
 
     @DeleteMapping("/received/{id}")
-    public ResponseEntity<Map<String, String>> deleteReceivedMessage(@PathVariable Long id) {
+    public ResponseEntity<Map<String, String>> deleteReceivedMessage(@PathVariable Long id, HttpSession session) {
         try {
+            Long userId = (Long) session.getAttribute("userId");
+            if (userId == null) {
+                return ResponseEntity.status(401).body(Map.of("status", "error", "message", "로그인이 필요합니다"));
+            }
+
             messageMapper.deleteByReceiver(id);
 
-            Map<String, String> response = new HashMap<>();
-            response.put("status", "success");
-            response.put("message", "받은 쪽지가 삭제되었습니다");
-
-            return ResponseEntity.ok(response);
+            return ResponseEntity.ok(Map.of("status", "success", "message", "받은 쪽지가 삭제되었습니다"));
         } catch (Exception e) {
             System.err.println("받은 쪽지 삭제 중 오류:");
             e.printStackTrace();
@@ -162,15 +173,16 @@ public class MessageController {
     }
 
     @DeleteMapping("/sent/{id}")
-    public ResponseEntity<Map<String, String>> deleteSentMessage(@PathVariable Long id) {
+    public ResponseEntity<Map<String, String>> deleteSentMessage(@PathVariable Long id, HttpSession session) {
         try {
+            Long userId = (Long) session.getAttribute("userId");
+            if (userId == null) {
+                return ResponseEntity.status(401).body(Map.of("status", "error", "message", "로그인이 필요합니다"));
+            }
+
             messageMapper.deleteBySender(id);
 
-            Map<String, String> response = new HashMap<>();
-            response.put("status", "success");
-            response.put("message", "보낸 쪽지가 삭제되었습니다");
-
-            return ResponseEntity.ok(response);
+            return ResponseEntity.ok(Map.of("status", "success", "message", "보낸 쪽지가 삭제되었습니다"));
         } catch (Exception e) {
             System.err.println("보낸 쪽지 삭제 중 오류:");
             e.printStackTrace();

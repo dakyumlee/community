@@ -112,7 +112,11 @@
                     </div>
 
                     <div class="comment-form hidden" id="comment-form">
-                        <form id="comment-create-form">
+                    <!-- 
+                    	수인 - 댓글 작성 
+                    	작성 버튼 눌렀을때 DTO 내용 컨트롤러 
+                    -->
+                        <form id="comment-create-form" action="/Post/Write">
                             <div class="form-group">
                                 <textarea id="comment-content" name="content" class="form-control" placeholder="댓글을 입력하세요" rows="3" required></textarea>
                                 <div class="error-message hidden" id="content-error"></div>
@@ -121,8 +125,10 @@
                                 <button type="submit" class="btn btn-primary btn-sm" id="comment-submit-btn">댓글 작성</button>
                             </div>
                         </form>
+                        
                     </div>
 
+					<!-- 댓글 목록 보여지는 부분 -->
                     <div class="comments-list" id="comments-list"></div>
 
                     <div class="comment-pagination hidden" id="comment-pagination">

@@ -89,6 +89,7 @@ public class AuthController {
         try {
             System.out.println("=== 로그인 시도 ===");
             System.out.println("이메일: " + request.getEmail());
+            System.out.println("기존 세션 ID: " + session.getId());
 
             UserResponse user = userMapper.findUserByEmail(request.getEmail());
             if (user == null) {
@@ -111,13 +112,23 @@ public class AuthController {
 
             boolean isAdmin = "ADMIN".equals(user.getRole());
 
+            // 세션에 모든 필요한 정보 저장
             session.setAttribute("userId", user.getId());
             session.setAttribute("email", user.getEmail());
             session.setAttribute("nickname", user.getNickname());
+            session.setAttribute("userRole", user.getRole()); // 누락되었던 부분 추가
             session.setAttribute("isAdmin", isAdmin);
+            
+            // 세션 타임아웃 설정 (30분)
+            session.setMaxInactiveInterval(30 * 60);
 
-            System.out.println("세션에 저장된 userId: " + user.getId());
+            System.out.println("=== 세션 정보 저장 완료 ===");
             System.out.println("세션 ID: " + session.getId());
+            System.out.println("저장된 userId: " + user.getId());
+            System.out.println("저장된 email: " + user.getEmail());
+            System.out.println("저장된 nickname: " + user.getNickname());
+            System.out.println("저장된 userRole: " + user.getRole());
+            System.out.println("저장된 isAdmin: " + isAdmin);
 
             LoginResponse response = new LoginResponse();
             response.setToken("session-" + session.getId());
@@ -138,45 +149,68 @@ public class AuthController {
 
     @PostMapping("/logout")
     public ResponseEntity<Map<String, String>> logout(HttpSession session) {
-        session.invalidate();
-        return ResponseEntity.ok(Map.of("message", "로그아웃되었습니다"));
+        try {
+            System.out.println("=== 로그아웃 처리 ===");
+            System.out.println("로그아웃할 세션 ID: " + session.getId());
+            session.invalidate();
+            System.out.println("세션 무효화 완료");
+            return ResponseEntity.ok(Map.of("message", "로그아웃되었습니다"));
+        } catch (Exception e) {
+            System.out.println("로그아웃 에러: " + e.getMessage());
+            return ResponseEntity.ok(Map.of("message", "로그아웃되었습니다"));
+        }
     }
 
     @GetMapping("/me")
     public ResponseEntity<?> getCurrentUser(HttpSession session) {
-        System.out.println("세션 ID: " + session.getId());
-        
-        Long userId = (Long) session.getAttribute("userId");
-        String email = (String) session.getAttribute("email");
-        String nickname = (String) session.getAttribute("nickname");
-        Boolean isAdmin = (Boolean) session.getAttribute("isAdmin");
-        
-        System.out.println("세션의 userId: " + userId);
-        System.out.println("세션의 email: " + email);
-        System.out.println("세션의 nickname: " + nickname);
-        System.out.println("세션의 isAdmin: " + isAdmin);
-        
-        if (userId == null) {
-            System.out.println("아 너무짜증나 계속에러나ㅋㅋㅠ이거보면디버깅ㄱㄱ");
-            return ResponseEntity.status(401).body(Map.of("error", "로그인이 필요합니다"));
+        try {
+            System.out.println("=== 현재 사용자 정보 조회 ===");
+            System.out.println("세션 ID: " + session.getId());
+            System.out.println("세션 생성 시간: " + new java.util.Date(session.getCreationTime()));
+            System.out.println("세션 마지막 접근 시간: " + new java.util.Date(session.getLastAccessedTime()));
+            
+            Long userId = (Long) session.getAttribute("userId");
+            String email = (String) session.getAttribute("email");
+            String nickname = (String) session.getAttribute("nickname");
+            String userRole = (String) session.getAttribute("userRole");
+            Boolean isAdmin = (Boolean) session.getAttribute("isAdmin");
+            
+            System.out.println("세션의 userId: " + userId);
+            System.out.println("세션의 email: " + email);
+            System.out.println("세션의 nickname: " + nickname);
+            System.out.println("세션의 userRole: " + userRole);
+            System.out.println("세션의 isAdmin: " + isAdmin);
+            
+            if (userId == null) {
+                System.out.println("세션에 userId가 없음 - 로그인 필요");
+                return ResponseEntity.status(401).body(Map.of("error", "로그인이 필요합니다"));
+            }
+
+            Map<String, Object> userInfo = Map.of(
+                "id", userId,
+                "email", email != null ? email : "",
+                "nickname", nickname != null ? nickname : "",
+                "role", userRole != null ? userRole : "USER",
+                "isAdmin", isAdmin != null ? isAdmin : false,
+                "sessionId", session.getId()
+            );
+
+            System.out.println("반환할 사용자 정보: " + userInfo);
+            return ResponseEntity.ok(userInfo);
+            
+        } catch (Exception e) {
+            System.out.println("사용자 정보 조회 에러: " + e.getMessage());
+            e.printStackTrace();
+            return ResponseEntity.status(401).body(Map.of("error", "세션 오류가 발생했습니다"));
         }
-
-        Map<String, Object> userInfo = Map.of(
-            "id", userId,
-            "email", email != null ? email : "",
-            "nickname", nickname != null ? nickname : "",
-            "isAdmin", isAdmin != null ? isAdmin : false
-        );
-
-        System.out.println("반환할 사용자 정보: " + userInfo);
-        return ResponseEntity.ok(userInfo);
     }
 
     @GetMapping("/test")
-    public ResponseEntity<Map<String, String>> test() {
+    public ResponseEntity<Map<String, String>> test(HttpSession session) {
         return ResponseEntity.ok(Map.of(
             "message", "Auth controller is working!",
-            "timestamp", String.valueOf(System.currentTimeMillis())
+            "timestamp", String.valueOf(System.currentTimeMillis()),
+            "sessionId", session.getId()
         ));
     }
 }

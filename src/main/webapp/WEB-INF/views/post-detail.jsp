@@ -30,6 +30,51 @@
         .modal:not(.hidden) {
             display: flex;
         }
+
+        .comment-item {
+            border-bottom: 1px solid #eee;
+            padding: 15px 0;
+        }
+
+        .comment-meta {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 8px;
+        }
+
+        .comment-author {
+            font-weight: 600;
+            color: #333;
+        }
+
+        .comment-date {
+            color: #666;
+            font-size: 0.9em;
+        }
+
+        .comment-content {
+            margin: 8px 0;
+            line-height: 1.6;
+            color: #444;
+        }
+
+        .comment-actions {
+            margin-top: 8px;
+        }
+
+        .no-comments {
+            text-align: center;
+            color: #666;
+            padding: 30px;
+            font-style: italic;
+        }
+
+        .error-message {
+            color: #dc3545;
+            font-size: 0.875em;
+            margin-top: 5px;
+        }
     </style>
 </head>
 <body>
@@ -123,7 +168,9 @@
                         </form>
                     </div>
 
-                    <div class="comments-list" id="comments-list"></div>
+                    <div class="comments-list" id="comments-list">
+                        <p class="no-comments">아직 댓글이 없습니다.</p>
+                    </div>
 
                     <div class="comment-pagination hidden" id="comment-pagination">
                         <button class="btn btn-outline btn-sm" id="load-more-comments">더 보기</button>
@@ -165,18 +212,19 @@
         </div>
     </div>
 
-    <script src="/static/js/utils/constants.js"></script>
-    <script src="/static/js/utils/helpers.js"></script>
-    <script src="/static/js/utils/validation.js"></script>
-    <script src="/static/js/utils/auth.js"></script>
-    <script src="/static/js/api/apiClient.js"></script>
-    <script src="/static/js/api/messageAPI.js"></script>
-    <script src="/static/js/api/authAPI.js"></script>
-    <script src="/static/js/api/postAPI.js"></script>
-    <script src="/static/js/api/commentAPI.js"></script>
-    <script src="/static/js/components/header.js"></script>
-    <script src="/static/js/pages/postDetail.js"></script>
-    <script src="/static/js/components/imageModal.js"></script>
-    <script src="/static/js/app.js"></script>
+    <script src="/static/js/utils/constants.js?v=<%= System.currentTimeMillis() %>"></script>
+    <script src="/static/js/utils/helpers.js?v=<%= System.currentTimeMillis() %>"></script>
+    <script src="/static/js/utils/validation.js?v=<%= System.currentTimeMillis() %>"></script>
+    <script src="/static/js/utils/auth.js?v=<%= System.currentTimeMillis() %>"></script>
+    <script src="/static/js/api/apiClient.js?v=<%= System.currentTimeMillis() %>"></script>
+    <script src="/static/js/api/messageAPI.js?v=<%= System.currentTimeMillis() %>"></script>
+    <script src="/static/js/api/authAPI.js?v=<%= System.currentTimeMillis() %>"></script>
+    <script src="/static/js/api/postAPI.js?v=<%= System.currentTimeMillis() %>"></script>
+    <script src="/static/js/api/commentAPI.js?v=<%= System.currentTimeMillis() %>"></script>
+    <script src="/static/js/components/header.js?v=<%= System.currentTimeMillis() %>"></script>
+    <script src="/static/js/pages/postDetail.js?v=<%= System.currentTimeMillis() %>"></script>
+    <script src="/static/js/components/imageModal.js?v=<%= System.currentTimeMillis() %>"></script>
+    <script src="/static/js/app.js?v=<%= System.currentTimeMillis() %>"></script>
+    <script src="/static/js/utils/fallback.js?v=<%= System.currentTimeMillis() %>"></script>
 </body>
 </html>

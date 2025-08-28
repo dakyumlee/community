@@ -185,7 +185,7 @@
             SELECT NVL(MAX(id),0)+1 FROM comments
         </selectKey>
         INSERT INTO comments (id, content, post_id, author_id, parent_id, created_at, updated_at)
-        VALUES (#{id}, #{content}, #{postId}, #{userId}, #{parentId}, SYSDATE, SYSDATE)
+        VALUES (#{id}, #{content}, #{postId}, #{userId}, #{parentId, jdbcType=BIGINT}, SYSDATE, SYSDATE)
     </insert>
 
     <select id="findCommentById" resultType="com.community.dto.response.CommentResponse">

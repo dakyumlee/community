@@ -4,12 +4,15 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
     <title>커뮤니티</title>
-    <link rel="stylesheet" href="/static/css/common.css">
-    <link rel="stylesheet" href="/static/css/layout.css">
-    <link rel="stylesheet" href="/static/css/components.css">
-    <link rel="stylesheet" href="/static/css/pages.css">
-    <link rel="stylesheet" href="/static/css/responsive.css">
+    <link rel="stylesheet" href="/static/css/common.css?v=001">
+    <link rel="stylesheet" href="/static/css/layout.css?v=001">
+    <link rel="stylesheet" href="/static/css/components.css?v=001">
+    <link rel="stylesheet" href="/static/css/pages.css?v=001">
+    <link rel="stylesheet" href="/static/css/responsive.css?v=001">
 </head>
 <body>
     <header class="header">
@@ -140,20 +143,44 @@
             padding: 50px;
             color: #6c757d;
         }
+        
+        #post-list img {
+            width: 60px !important;
+            height: 45px !important;
+            object-fit: cover !important;
+            border-radius: 4px;
+            border: 1px solid #e0e0e0;
+        }
     </style>
 
-    <script src="/static/js/utils/constants.js"></script>
-    <script src="/static/js/utils/helpers.js"></script>
-    <script src="/static/js/utils/validation.js"></script>
-    <script src="/static/js/utils/auth.js"></script>
-    <script src="/static/js/api/apiClient.js"></script>
-    <script src="/static/js/api/authAPI.js"></script>
-    <script src="/static/js/api/postAPI.js"></script>
-    <script src="/static/js/components/header.js"></script>
-    <script src="/static/js/components/postCard.js"></script>
-    <script src="/static/js/components/pagination.js"></script>
-    <script src="/static/js/pages/index.js"></script>
-    <script src="/static/js/pages/search.js"></script>
-    <script src="/static/js/app.js"></script>
+    <script src="/static/js/utils/constants.js?v=001"></script>
+    <script src="/static/js/utils/helpers.js?v=001"></script>
+    <script src="/static/js/utils/validation.js?v=001"></script>
+    <script src="/static/js/utils/auth.js?v=001"></script>
+    <script src="/static/js/api/apiClient.js?v=001"></script>
+    <script src="/static/js/api/authAPI.js?v=001"></script>
+    <script src="/static/js/api/postAPI.js?v=001"></script>
+    <script src="/static/js/components/header.js?v=001"></script>
+    <script src="/static/js/components/postCard.js?v=001"></script>
+    <script src="/static/js/components/pagination.js?v=001"></script>
+    <script src="/static/js/pages/index.js?v=001"></script>
+    <script src="/static/js/pages/search.js?v=001"></script>
+    <script src="/static/js/app.js?v=001"></script>
+    
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            if (typeof Auth !== 'undefined' && !Auth.requireAuth) {
+                Auth.requireAuth = function() {
+                    if (!this.isAuthenticated()) {
+                        if (typeof showNotification === 'function') {
+                            showNotification('로그인이 필요합니다.', 'warning');
+                        }
+                        return false;
+                    }
+                    return true;
+                };
+            }
+        });
+    </script>
 </body>
 </html>

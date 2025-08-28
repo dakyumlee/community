@@ -391,7 +391,7 @@
                 <div class="my-page-tabs">
                     <button class="tab-btn active" data-tab="profile">프로필</button>
                     <button class="tab-btn" data-tab="posts">내 게시글</button>
-                    <button class="tab-btn" data-tab="messages">쪽지함</button>
+                    <button class="tab-btn" data-tab="messages" id="hojun">쪽지함</button>
                     <button class="tab-btn" data-tab="stats">통계</button>
                 </div>
 
@@ -531,6 +531,21 @@
     </main>
 
     <div id="message-notification-badge" class="notification-badge hidden"></div>
+    
+    <script>
+    // 호준이 임의로 넣어둠
+    const userId = "${sessionScope.userId}"; 
+
+    const messageBtn = document.getElementById('hojun');
+    messageBtn.addEventListener('click', function() {
+        if (userId && userId.trim() !== '') {           
+            location.href = `/Message/List/Received?userId=${userId}`;
+        } else {
+            alert("로그인 정보가 없습니다.");
+            window.location.href = "/login";
+        }
+    });
+</script>
 
     <script src="/static/js/utils/constants.js"></script>
     <script src="/static/js/utils/helpers.js"></script>
@@ -542,5 +557,7 @@
     <script src="/static/js/components/header.js"></script>
     <script src="/static/js/pages/myPage.js"></script>
     <script src="/static/js/app.js"></script>
+    
+   
 </body>
 </html>

@@ -2,7 +2,7 @@ package com.community.controller;
 
 import com.community.dto.response.PostResponse;
 import com.community.mapper.CommunityMapper;
-import com.community.dto.response.CommentResponse;
+import com.community.suin.CommentResponse;
 import com.community.dto.response.UserResponse;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;

@@ -1,4 +1,4 @@
-package com.community.dto.response;
+package com.community.suin;
 
 import java.time.LocalDateTime;
 

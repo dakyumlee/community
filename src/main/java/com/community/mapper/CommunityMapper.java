@@ -2,6 +2,8 @@ package com.community.mapper;
 
 import com.community.dto.request.MessageRequest;
 import com.community.dto.response.*;
+import com.community.suin.CommentResponse;
+
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 import java.util.List;

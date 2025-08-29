@@ -1,4 +1,4 @@
-package com.community.dto.request;
+package com.community.suin;
 
 public class CommentRequest {
     private String content;
@@ -37,3 +37,5 @@ public class CommentRequest {
         this.parentId = parentId;
     }
 }
+
+

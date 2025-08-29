@@ -45,6 +45,7 @@ public class MessagesController {
         mv.addObject("pageTitle", pageTitle);
         mv.addObject("messageList", messageList); 
         mv.addObject("userId", userId);
+        mv.addObject("pageType", "Received");
         mv.setViewName("messageList");
         return mv;
 	}
@@ -65,6 +66,7 @@ public class MessagesController {
         mv.addObject("pageTitle", pageTitle);
         mv.addObject("messageList", messageList); 
         mv.addObject("userId", userId);
+        mv.addObject("pageType", "Sent");
         mv.setViewName("messageList");
         return mv;
 	}
@@ -129,19 +131,27 @@ public class MessagesController {
 		
 	}
 	
-	@GetMapping("/Message/ReceiverDelete")
-	public ModelAndView receiverDeleteMessage(Long id, HttpSession session) {
+	@GetMapping("/Message/DeleteMessage")
+	public ModelAndView DeleteMessage(@RequestParam("id") Long id,
+									  @RequestParam("pageType") String pageType,
+									   HttpSession session) {
 		
 		Long userId = (Long) session.getAttribute("userId");
 		
 		ModelAndView mv = new ModelAndView();
 		
-		messagesMapper.receiverDeleteMessage(id);
+		messagesMapper.DeleteMessage(id);
 		mv.addObject("id", id);
 		mv.addObject("userId", userId);
 		mv.addObject(mv);
-		mv.setViewName("redirect:/Message/List/Received");
 		
+		if("Received".equals(pageType)) {
+			mv.setViewName("redirect:/Message/List/Received");
+		}else if("Sent".equals(pageType)){
+			mv.setViewName("redirect:/Message/List/Sent");
+		}else {
+			mv.setViewName("redirect:/Message/List/Received");
+		}
 		return mv;
 	}
 	

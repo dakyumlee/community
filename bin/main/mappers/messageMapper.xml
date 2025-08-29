@@ -86,7 +86,7 @@
   </update>
 
   
-  <update id = "receiverDeleteMessage">
+  <update id = "DeleteMessage">
   	UPDATE MESSAGES
   	SET DELETED_BY_RECEIVER = 1
   	WHERE  ID  = #{param1}

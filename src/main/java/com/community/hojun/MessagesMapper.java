@@ -14,7 +14,7 @@ public interface MessagesMapper {
 
 	MessageDTO getMessage(Long Id);
 
-	void receiverDeleteMessage(Long id);
+	void DeleteMessage(Long id);
 
 	void sendMessage(MessageDTO messageDTO);
 

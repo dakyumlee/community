@@ -52,7 +52,7 @@
                     </td>
                     <td>${message.createdAt}</td>
                     <td>
-                        <a href="/Message/ReceiverDelete?id=${message.id}">삭제</a>
+                        <a href="/Message/DeleteMessage?id=${message.id}&pageType=${pageType}">삭제</a>
                     </td>
                 </tr>
             </c:forEach>

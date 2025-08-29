@@ -1,0 +1,103 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.community.hojun.MessagesMapper">  
+  <!-- 목록조회 -->
+   <select id="getReceiveMessageList"  
+          resultType = "com.community.dto.response.MessageResponse" >
+  
+	SELECT
+	    M.ID ID,
+	    M.TITLE TITLE,
+	    M.CONTENT CONTENT,
+	    M.SENDER_ID SENDERID,
+	    M.RECEIVER_ID RECEIVERID,
+	    S.NICKNAME SENDERNAME,
+	    R.NICKNAME RECEIVERNAME,
+	    M.IS_READ ISREAD,
+	    M.DELETED_BY_SENDER DELETED_BY_SENDER,
+	    M.DELETED_BY_RECEIVER DELETED_BY_RECEIVER,
+	    M.CREATED_AT CREATEDAT
+	FROM
+	    MESSAGES M
+	INNER JOIN
+	    USERS S ON M.SENDER_ID = S.ID
+	INNER JOIN
+	    USERS R ON M.RECEIVER_ID = R.ID
+	WHERE DELETED_BY_RECEIVER = 0
+	AND   M.RECEIVER_ID = #{param1}                
+	ORDER  BY  ID DESC
+  
+  </select>
+     <select id="getSentMessageList"  
+          resultType = "com.community.dto.response.MessageResponse" >
+  
+	SELECT
+	    M.ID ID,
+	    M.TITLE TITLE,
+	    M.CONTENT CONTENT,
+	    M.SENDER_ID SENDERID,
+	    M.RECEIVER_ID RECEIVERID,
+	    S.NICKNAME SENDERNAME,
+	    R.NICKNAME RECEIVERNAME,
+	    M.IS_READ ISREAD,
+	    M.DELETED_BY_SENDER DELETED_BY_SENDER,
+	    M.DELETED_BY_RECEIVER DELETED_BY_RECEIVER,
+	    M.CREATED_AT CREATEDAT
+	FROM
+	    MESSAGES M
+	INNER JOIN
+	    USERS S ON M.SENDER_ID = S.ID
+	INNER JOIN
+	    USERS R ON M.RECEIVER_ID = R.ID
+	WHERE DELETED_BY_RECEIVER = 0
+	AND   M.SENDER_ID = #{param1}                
+	ORDER  BY  ID DESC
+  
+  </select>
+  
+  <!-- 쪽지 내용 보기 -->
+  <select id = "getMessage" resultType = "com.community.hojun.MessageDTO" >
+  	SELECT ID, TITLE, CONTENT, SENDER_ID, RECEIVER_ID, CREATED_AT
+  	FROM   MESSAGES
+  	WHERE  ID = #{param1}
+  </select>
+  
+ 
+  <insert  id="sendMessage">
+  	
+  	INSERT INTO MESSAGES (
+	    TITLE,
+	    CONTENT,
+	    SENDER_ID,
+	    RECEIVER_ID	    
+	) VALUES ( 
+        #{ title  },
+        #{ content    },
+        #{ sender_id  },
+        #{ receiver_id   }
+    )  
+  </insert>
+  
+  <!-- is_read 1로만들기 -->
+  <update id="updateIsRead">
+  	UPDATE MESSAGES
+  	SET	   IS_READ = 1
+  	WHERE  ID = #{param1}
+  </update>
+
+  
+  <update id = "receiverDeleteMessage">
+  	UPDATE MESSAGES
+  	SET DELETED_BY_RECEIVER = 1
+  	WHERE  ID  = #{param1}
+  </update>
+ 
+  <!-- 
+  <update id = "updateBoard">
+  	UPDATE BOARD
+  	SET	   TITLE = #{title},
+  		   CONTENT = #{content}	
+  	WHERE  idx = #{idx}
+  </update> -->
+  
+</mapper>

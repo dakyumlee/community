@@ -5,11 +5,12 @@
 <mapper namespace="com.community.suin.CommentMapper">
 
     <select id="findCommentsByPostId" resultType="com.community.suin.CommentResponse">
-        SELECT 
+        SELECT
             c.id,
             c.content,
             c.author_id as authorId,
             u.nickname as authorNickname,
+            u.role as authorRole,
             c.post_id as postId,
             c.parent_id as parentId,
             c.created_at as createdAt,
@@ -29,11 +30,12 @@
     </insert>
 
     <select id="findCommentById" resultType="com.community.suin.CommentResponse">
-        SELECT 
+        SELECT
             c.id,
             c.content,
             c.author_id as authorId,
             u.nickname as authorNickname,
+            u.role as authorRole,
             c.post_id as postId,
             c.parent_id as parentId,
             c.created_at as createdAt,

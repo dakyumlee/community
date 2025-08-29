@@ -7,13 +7,12 @@ public class CommentResponse {
     private String content;
     private Long authorId;
     private String authorNickname;
+    private String authorRole;
     private Long postId;
     private Long parentId;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
     private boolean isAuthor;
-
-    public CommentResponse() {}
 
     public Long getId() {
         return id;
@@ -45,6 +44,14 @@ public class CommentResponse {
 
     public void setAuthorNickname(String authorNickname) {
         this.authorNickname = authorNickname;
+    }
+
+    public String getAuthorRole() {
+        return authorRole;
+    }
+
+    public void setAuthorRole(String authorRole) {
+        this.authorRole = authorRole;
     }
 
     public Long getPostId() {
@@ -83,7 +90,7 @@ public class CommentResponse {
         return isAuthor;
     }
 
-    public void setAuthor(boolean author) {
-        isAuthor = author;
+    public void setAuthor(boolean isAuthor) {
+        this.isAuthor = isAuthor;
     }
 }

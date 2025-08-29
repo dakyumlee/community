@@ -371,15 +371,19 @@ function createCommentItem(comment, depth = 0) {
         Number(currentUser.id) === Number(comment.authorId)
     );
     
+    const isAdminComment = comment.authorRole === 'admin' || 
+                          comment.authorRole === 'ADMIN' || 
+                          comment.role === 'admin' || 
+                          comment.role === 'ADMIN';
     const canReply = Auth.isAuthenticated() && depth < 3;
     const isOtherUser = Auth.isAuthenticated() && currentUser && !isAuthor;
     
-    console.log(`댓글 ${comment.id}: user=${currentUser?.id}, author=${comment.authorId}, isAuthor=${isAuthor}`);
+    console.log(`댓글 ${comment.id}: user=${currentUser?.id}, author=${comment.authorId}, isAuthor=${isAuthor}, isAdmin=${isAdminComment}`);
     
     div.innerHTML = `
         <div class="comment-meta">
             <div>
-                <span class="comment-author">${sanitizeHTML(comment.authorNickname)}</span>
+                <span class="comment-author ${isAdminComment ? 'admin-comment-author' : ''}">${sanitizeHTML(comment.authorNickname)}</span>
                 <span class="comment-date">${formatDateTime(comment.createdAt)}</span>
             </div>
             <div class="comment-meta-actions">
@@ -393,7 +397,7 @@ function createCommentItem(comment, depth = 0) {
                 }
             </div>
         </div>
-        <div class="comment-content">${sanitizeHTML(comment.content).replace(/\n/g, '<br>')}</div>
+        <div class="comment-content ${isAdminComment ? 'admin-comment-content' : ''}">${sanitizeHTML(comment.content).replace(/\n/g, '<br>')}</div>
         ${isAuthor ? `
             <div class="comment-actions">
                 <button class="btn btn-sm btn-warning" onclick="editComment(${comment.id})">수정</button>

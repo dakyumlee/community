@@ -2,6 +2,7 @@ let postId = null;
 let currentCommentsPage = 1;
 let currentPostAuthor = null;
 let selectedMessageRecipient = null;
+let replyingTo = null;
 
 function initPostDetailPage() {
     const urlParams = getURLParams();
@@ -330,37 +331,192 @@ function renderComments(comments) {
         return;
     }
     
-    comments.forEach(comment => {
+    const commentsTree = buildCommentsTree(comments);
+    commentsTree.forEach(comment => {
         const commentItem = createCommentItem(comment);
         commentsList.appendChild(commentItem);
     });
 }
 
-function createCommentItem(comment) {
+function buildCommentsTree(comments) {
+    const commentMap = new Map();
+    const rootComments = [];
+    
+    comments.forEach(comment => {
+        comment.children = [];
+        commentMap.set(comment.id, comment);
+    });
+    
+    comments.forEach(comment => {
+        if (comment.parentId && commentMap.has(comment.parentId)) {
+            commentMap.get(comment.parentId).children.push(comment);
+        } else {
+            rootComments.push(comment);
+        }
+    });
+    
+    return rootComments;
+}
+
+function createCommentItem(comment, depth = 0) {
     const div = document.createElement('div');
-    div.className = 'comment-item';
+    div.className = `comment-item ${depth > 0 ? 'reply' : ''}`;
+    div.setAttribute('data-depth', depth);
     
     const currentUser = Auth.getUser();
-    const isAuthor = currentUser && currentUser.id === comment.authorId;
+    
+    const isAuthor = currentUser && (
+        currentUser.id == comment.authorId ||
+        String(currentUser.id) === String(comment.authorId) || 
+        Number(currentUser.id) === Number(comment.authorId)
+    );
+    
+    const canReply = Auth.isAuthenticated() && depth < 3;
+    const isOtherUser = Auth.isAuthenticated() && currentUser && !isAuthor;
+    
+    console.log(`댓글 ${comment.id}: user=${currentUser?.id}, author=${comment.authorId}, isAuthor=${isAuthor}`);
     
     div.innerHTML = `
         <div class="comment-meta">
-            <span class="comment-author">${sanitizeHTML(comment.authorNickname)}</span>
-            <span class="comment-date">${formatDateTime(comment.createdAt)}</span>
-            ${Auth.isAuthenticated() && currentUser && currentUser.id !== comment.authorId ? 
-                `<button class="btn btn-sm btn-outline-primary" onclick="openCommentMessageModal(${comment.authorId}, '${sanitizeHTML(comment.authorNickname)}')">쪽지</button>` 
-                : ''
-            }
+            <div>
+                <span class="comment-author">${sanitizeHTML(comment.authorNickname)}</span>
+                <span class="comment-date">${formatDateTime(comment.createdAt)}</span>
+            </div>
+            <div class="comment-meta-actions">
+                ${isOtherUser ? 
+                    `<button class="btn btn-sm btn-outline-primary comment-message-btn" onclick="openCommentMessageModal(${comment.authorId}, '${sanitizeHTML(comment.authorNickname)}')">쪽지</button>` 
+                    : ''
+                }
+                ${canReply ? 
+                    `<button class="btn btn-sm btn-outline-secondary reply-btn" onclick="showReplyForm(${comment.id}, '${sanitizeHTML(comment.authorNickname)}')">답글</button>`
+                    : ''
+                }
+            </div>
         </div>
-        <div class="comment-content">${sanitizeHTML(comment.content)}</div>
+        <div class="comment-content">${sanitizeHTML(comment.content).replace(/\n/g, '<br>')}</div>
         ${isAuthor ? `
             <div class="comment-actions">
+                <button class="btn btn-sm btn-warning" onclick="editComment(${comment.id})">수정</button>
                 <button class="btn btn-sm btn-danger" onclick="deleteComment(${comment.id})">삭제</button>
             </div>
         ` : ''}
+        <div id="reply-form-${comment.id}" class="reply-form-container" style="display: none;">
+            <form class="reply-form" onsubmit="handleReplySubmit(event, ${comment.id})">
+                <div class="reply-input-container">
+                    <textarea id="reply-content-${comment.id}" placeholder="답글을 작성하세요..." required rows="3"></textarea>
+                </div>
+                <div class="reply-form-actions">
+                    <button type="button" class="btn btn-sm btn-secondary" onclick="hideReplyForm(${comment.id})">취소</button>
+                    <button type="submit" class="btn btn-sm btn-primary">답글 작성</button>
+                </div>
+            </form>
+        </div>
+        <div id="replies-${comment.id}" class="replies-container"></div>
     `;
     
+    if (comment.children && comment.children.length > 0) {
+        const repliesContainer = div.querySelector(`#replies-${comment.id}`);
+        comment.children.forEach(reply => {
+            const replyItem = createCommentItem(reply, depth + 1);
+            repliesContainer.appendChild(replyItem);
+        });
+    }
+    
     return div;
+}
+
+function showReplyForm(parentId, parentAuthor) {
+    hideAllReplyForms();
+    
+    const replyForm = document.getElementById(`reply-form-${parentId}`);
+    const textarea = document.getElementById(`reply-content-${parentId}`);
+    
+    if (replyForm && textarea) {
+        replyForm.style.display = 'block';
+        textarea.focus();
+        replyingTo = { id: parentId, author: parentAuthor };
+        
+        const replyIndicator = document.createElement('div');
+        replyIndicator.className = 'reply-indicator';
+        replyIndicator.innerHTML = `
+            <small class="text-muted">
+                ${parentAuthor}님에게 답글 작성 중
+                <button type="button" onclick="hideReplyForm(${parentId})" class="btn-close-small">×</button>
+            </small>
+        `;
+        
+        replyForm.insertBefore(replyIndicator, replyForm.firstChild);
+    }
+}
+
+function hideReplyForm(parentId) {
+    const replyForm = document.getElementById(`reply-form-${parentId}`);
+    if (replyForm) {
+        replyForm.style.display = 'none';
+        const textarea = document.getElementById(`reply-content-${parentId}`);
+        if (textarea) {
+            textarea.value = '';
+        }
+        const indicator = replyForm.querySelector('.reply-indicator');
+        if (indicator) {
+            indicator.remove();
+        }
+    }
+    replyingTo = null;
+}
+
+function hideAllReplyForms() {
+    const replyForms = document.querySelectorAll('.reply-form-container');
+    replyForms.forEach(form => {
+        form.style.display = 'none';
+        const textarea = form.querySelector('textarea');
+        if (textarea) {
+            textarea.value = '';
+        }
+        const indicator = form.querySelector('.reply-indicator');
+        if (indicator) {
+            indicator.remove();
+        }
+    });
+    replyingTo = null;
+}
+
+async function handleReplySubmit(e, parentId) {
+    e.preventDefault();
+    
+    if (!Auth.requireAuth()) return;
+    
+    const textarea = document.getElementById(`reply-content-${parentId}`);
+    const submitBtn = e.target.querySelector('button[type="submit"]');
+    
+    const content = textarea.value.trim();
+    
+    if (!content) {
+        addInputError(textarea, '답글 내용을 입력해주세요');
+        return;
+    }
+    
+    try {
+        setLoading(submitBtn, true);
+        
+        await CommentAPI.createComment(postId, { 
+            content: content,
+            parentId: parentId
+        });
+        
+        showNotification('답글이 작성되었습니다.', 'success');
+        
+        hideReplyForm(parentId);
+        loadComments();
+        
+    } catch (error) {
+        console.error('답글 작성 실패:', error);
+        showNotification('답글 작성에 실패했습니다.', 'error');
+        Auth.handleAuthError(error);
+        
+    } finally {
+        setLoading(submitBtn, false);
+    }
 }
 
 function openCommentMessageModal(authorId, authorNickname) {
@@ -424,6 +580,7 @@ async function handleCreateComment(e) {
         
     } catch (error) {
         console.error('댓글 작성 실패:', error);
+        showNotification('댓글 작성에 실패했습니다.', 'error');
         Auth.handleAuthError(error);
         
     } finally {
@@ -467,6 +624,129 @@ async function deleteComment(commentId) {
         console.error('댓글 삭제 실패:', error);
         Auth.handleAuthError(error);
     }
+}
+
+async function editComment(commentId) {
+    console.log('댓글 수정 기능 - 구현 예정:', commentId);
+    showNotification('댓글 수정 기능은 아직 구현되지 않았습니다.', 'info');
+}
+
+function addInputError(element, message) {
+    removeInputError(element);
+    
+    if (element) {
+        element.classList.add('error');
+        
+        const errorDiv = document.createElement('div');
+        errorDiv.className = 'input-error';
+        errorDiv.textContent = message;
+        
+        element.parentElement.appendChild(errorDiv);
+    }
+}
+
+function removeInputError(element) {
+    if (element) {
+        element.classList.remove('error');
+        
+        const errorDiv = element.parentElement.querySelector('.input-error');
+        if (errorDiv) {
+            errorDiv.remove();
+        }
+    }
+}
+
+function setLoading(button, isLoading) {
+    if (!button) return;
+    
+    if (isLoading) {
+        button.disabled = true;
+        button.dataset.originalText = button.textContent;
+        button.textContent = '처리중...';
+    } else {
+        button.disabled = false;
+        button.textContent = button.dataset.originalText || '작성';
+    }
+}
+
+function showNotification(message, type = 'info') {
+    const notification = document.createElement('div');
+    notification.className = `notification ${type}`;
+    notification.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        padding: 12px 20px;
+        border-radius: 6px;
+        color: white;
+        font-weight: 500;
+        z-index: 9999;
+        animation: slideIn 0.3s ease;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        max-width: 300px;
+        background-color: ${type === 'success' ? '#28a745' : type === 'error' ? '#dc3545' : '#007bff'};
+    `;
+    notification.textContent = message;
+    
+    document.body.appendChild(notification);
+    
+    setTimeout(() => {
+        if (notification.parentElement) {
+            notification.style.animation = 'slideOut 0.3s ease';
+            setTimeout(() => {
+                if (notification.parentElement) {
+                    notification.remove();
+                }
+            }, 300);
+        }
+    }, 3000);
+}
+
+function sanitizeHTML(str) {
+    if (!str) return '';
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#x27;');
+}
+
+function formatDateTime(dateStr) {
+    if (!dateStr) return '';
+    
+    try {
+        const date = new Date(dateStr);
+        if (isNaN(date.getTime())) return dateStr;
+        
+        const now = new Date();
+        const diffMs = now.getTime() - date.getTime();
+        const diffMins = Math.floor(diffMs / (1000 * 60));
+        const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+        const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+        
+        if (diffMins < 1) return '방금 전';
+        if (diffMins < 60) return `${diffMins}분 전`;
+        if (diffHours < 24) return `${diffHours}시간 전`;
+        if (diffDays < 30) return `${diffDays}일 전`;
+        
+        return date.toLocaleDateString('ko-KR', {
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric'
+        });
+    } catch (e) {
+        return dateStr;
+    }
+}
+
+function getURLParams() {
+    const params = {};
+    const urlParams = new URLSearchParams(window.location.search);
+    for (const [key, value] of urlParams.entries()) {
+        params[key] = value;
+    }
+    return params;
 }
 
 if (document.readyState === 'loading') {

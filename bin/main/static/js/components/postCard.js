@@ -55,10 +55,6 @@ function createPostCard(post) {
                         ${post.isLiked ? '❤️' : '🤍'} ${post.likeCount || 0}
                     </button>
                 ` : ''}
-                ${isAuthor ? `
-                    <a href="/edit-post?id=${post.id}" class="btn btn-sm btn-secondary">수정</a>
-                    <button class="btn btn-sm btn-danger" onclick="handlePostDelete(${post.id})">삭제</button>
-                ` : ''}
             </div>
         </div>
     `;

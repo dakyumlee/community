@@ -3,13 +3,14 @@ package com.community.controller;
 import oracle.sql.BLOB;
 import com.community.dto.response.PostResponse;
 import com.community.mapper.CommunityMapper;
+import com.community.util.JwtUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
-import jakarta.servlet.http.HttpSession;
+import jakarta.servlet.http.HttpServletRequest;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -21,12 +22,28 @@ public class PostController {
 
     @Autowired
     private CommunityMapper mapper;
+    
+    @Autowired
+    private JwtUtil jwtUtil;
+
+    private Long getUserIdFromRequest(HttpServletRequest request) {
+        String authHeader = request.getHeader("Authorization");
+        if (authHeader != null && authHeader.startsWith("Bearer ")) {
+            String token = authHeader.substring(7);
+            try {
+                return jwtUtil.getUserIdFromToken(token);
+            } catch (Exception e) {
+                return null;
+            }
+        }
+        return null;
+    }
 
     @GetMapping
     public ResponseEntity<Map<String, Object>> getPosts(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size,
-            HttpSession session) {
+            HttpServletRequest request) {
         
         try {
             int offset = page * size;
@@ -54,7 +71,7 @@ public class PostController {
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<PostResponse> getPost(@PathVariable Long id, HttpSession session) {
+    public ResponseEntity<PostResponse> getPost(@PathVariable Long id, HttpServletRequest request) {
         try {
             System.out.println("=== getPost 호출 ===");
             System.out.println("게시글 ID: " + id);
@@ -68,8 +85,8 @@ public class PostController {
             System.out.println("게시글 조회 완료: " + post.getTitle());
             System.out.println("게시글 작성자 ID: " + post.getAuthorId());
             
-            Long userId = (Long) session.getAttribute("userId");
-            System.out.println("세션에서 가져온 사용자 ID: " + userId);
+            Long userId = getUserIdFromRequest(request);
+            System.out.println("JWT에서 가져온 사용자 ID: " + userId);
             
             if (userId != null) {
                 boolean isAuthor = userId.equals(post.getAuthorId());
@@ -103,10 +120,10 @@ public class PostController {
             @RequestParam("title") String title,
             @RequestParam("content") String content,
             @RequestParam(value = "files", required = false) MultipartFile[] images,
-            HttpSession session) {
+            HttpServletRequest request) {
         
         try {
-            Long userId = (Long) session.getAttribute("userId");
+            Long userId = getUserIdFromRequest(request);
             if (userId == null) {
                 return ResponseEntity.status(401).body(Map.of("error", "로그인이 필요합니다"));
             }
@@ -170,10 +187,10 @@ public class PostController {
     public ResponseEntity<Map<String, Object>> updatePost(
             @PathVariable Long id,
             @RequestBody Map<String, Object> request,
-            HttpSession session) {
+            HttpServletRequest httpRequest) {
         
         try {
-            Long userId = (Long) session.getAttribute("userId");
+            Long userId = getUserIdFromRequest(httpRequest);
             if (userId == null) {
                 return ResponseEntity.status(401).body(Map.of("error", "로그인이 필요합니다"));
             }
@@ -197,10 +214,10 @@ public class PostController {
     @DeleteMapping("/{id}")
     public ResponseEntity<Map<String, Object>> deletePost(
             @PathVariable Long id,
-            HttpSession session) {
+            HttpServletRequest request) {
         
         try {
-            Long userId = (Long) session.getAttribute("userId");
+            Long userId = getUserIdFromRequest(request);
             if (userId == null) {
                 return ResponseEntity.status(401).body(Map.of("error", "로그인이 필요합니다"));
             }
@@ -223,10 +240,10 @@ public class PostController {
     @PostMapping("/{id}/like")
     public ResponseEntity<Map<String, Object>> toggleLike(
             @PathVariable Long id,
-            HttpSession session) {
+            HttpServletRequest request) {
         
         try {
-            Long userId = (Long) session.getAttribute("userId");
+            Long userId = getUserIdFromRequest(request);
             if (userId == null) {
                 return ResponseEntity.status(401).body(Map.of("error", "로그인이 필요합니다"));
             }
@@ -288,10 +305,10 @@ public class PostController {
     @PostMapping("/{id}/bookmark")
     public ResponseEntity<Map<String, Object>> toggleBookmark(
             @PathVariable Long id,
-            HttpSession session) {
+            HttpServletRequest request) {
         
         try {
-            Long userId = (Long) session.getAttribute("userId");
+            Long userId = getUserIdFromRequest(request);
             if (userId == null) {
                 return ResponseEntity.status(401).body(Map.of("error", "로그인이 필요합니다"));
             }

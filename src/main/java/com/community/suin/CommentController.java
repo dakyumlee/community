@@ -1,8 +1,13 @@
 package com.community.suin;
 
+import com.community.suin.CommentMapper;
+import com.community.suin.CommentRequest;
+import com.community.suin.CommentResponse;
+import com.community.util.JwtUtil;
+
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import jakarta.servlet.http.HttpSession;
+import jakarta.servlet.http.HttpServletRequest;
 
 import java.util.HashMap;
 import java.util.List;
@@ -14,9 +19,11 @@ import java.util.ArrayList;
 @CrossOrigin(origins = "*")
 public class CommentController {
     private final CommentMapper commentMapper;
+    private final JwtUtil jwtUtil;
     
-    public CommentController(CommentMapper commentMapper) {
+    public CommentController(CommentMapper commentMapper, JwtUtil jwtUtil) {
         this.commentMapper = commentMapper;
+        this.jwtUtil = jwtUtil;
     }
 
     @GetMapping("/posts/{postId}/comments")
@@ -24,7 +31,7 @@ public class CommentController {
             @PathVariable Long postId,
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "10") int size,
-            HttpSession session) {
+            HttpServletRequest request) {
         
         try {
             System.out.println("댓글 목록 조회");
@@ -33,8 +40,9 @@ public class CommentController {
             List<CommentResponse> commentList = commentMapper.findCommentsByPostId(postId);
             System.out.println("조회된 댓글 수: " + commentList.size());
             
-            Long userId = (Long) session.getAttribute("userId");
-            if (userId != null) {
+            String token = getTokenFromRequest(request);
+            if (token != null && jwtUtil.isTokenValid(token)) {
+                Long userId = jwtUtil.extractUserId(token);
                 for (CommentResponse comment : commentList) {
                     comment.setAuthor(comment.getAuthorId().equals(userId));
                 }
@@ -65,7 +73,7 @@ public class CommentController {
     public ResponseEntity<Map<String, Object>> createComment(
             @PathVariable Long postId,
             @RequestBody CommentRequest request,
-            HttpSession session) {
+            HttpServletRequest httpRequest) {
         
         Map<String, Object> response = new HashMap<>();
         
@@ -74,13 +82,14 @@ public class CommentController {
             System.out.println("게시글 ID: " + postId);
             System.out.println("댓글 내용: " + request.getContent());
             
-            Long userId = (Long) session.getAttribute("userId");
-            if (userId == null) {
-                System.out.println("로그인되지 않은 사용자");
+            String token = getTokenFromRequest(httpRequest);
+            if (token == null || !jwtUtil.isTokenValid(token)) {
+                System.out.println("유효하지 않은 토큰");
                 response.put("error", "로그인이 필요합니다.");
                 return ResponseEntity.status(401).body(response);
             }
             
+            Long userId = jwtUtil.extractUserId(token);
             System.out.println("로그인된 사용자 ID: " + userId);
             
             if (request.getContent() == null || request.getContent().trim().isEmpty()) {
@@ -89,12 +98,14 @@ public class CommentController {
                 return ResponseEntity.badRequest().body(response);
             }
 
-            Long commentId = commentMapper.insertComment(
-                request.getContent().trim(),
-                postId,
-                userId,
-                request.getParentId()
-            );
+            Map<String, Object> commentParams = new HashMap<>();
+            commentParams.put("content", request.getContent().trim());
+            commentParams.put("postId", postId);
+            commentParams.put("userId", userId);
+            commentParams.put("parentId", request.getParentId());
+            
+            commentMapper.insertComment(commentParams);
+            Long commentId = (Long) commentParams.get("id");
 
             if (commentId == null) {
                 System.out.println("댓글 저장 실패");
@@ -121,11 +132,19 @@ public class CommentController {
         }
     }
 
+    private String getTokenFromRequest(HttpServletRequest request) {
+        String bearerToken = request.getHeader("Authorization");
+        if (bearerToken != null && bearerToken.startsWith("Bearer ")) {
+            return bearerToken.substring(7);
+        }
+        return null;
+    }
+
     @PutMapping("/comments/{id}")
     public ResponseEntity<Map<String, Object>> updateComment(
             @PathVariable Long id,
             @RequestBody CommentRequest request,
-            HttpSession session) {
+            HttpServletRequest httpRequest) {
         
         Map<String, Object> response = new HashMap<>();
         
@@ -133,11 +152,13 @@ public class CommentController {
             System.out.println("=== 댓글 수정 시도 ===");
             System.out.println("댓글 ID: " + id);
             
-            Long userId = (Long) session.getAttribute("userId");
-            if (userId == null) {
+            String token = getTokenFromRequest(httpRequest);
+            if (token == null || !jwtUtil.isTokenValid(token)) {
                 response.put("error", "로그인이 필요합니다.");
                 return ResponseEntity.status(401).body(response);
             }
+
+            Long userId = jwtUtil.extractUserId(token);
 
             if (!commentMapper.isCommentAuthor(id, userId) && !commentMapper.isAdmin(userId)) {
                 response.put("error", "댓글 수정 권한이 없습니다.");
@@ -174,21 +195,21 @@ public class CommentController {
     @DeleteMapping("/comments/{id}")
     public ResponseEntity<Map<String, Object>> deleteComment(
             @PathVariable Long id,
-            HttpSession session) {
+            HttpServletRequest httpRequest) {
         
         Map<String, Object> response = new HashMap<>();
         
         try {
-            Long userId = (Long) session.getAttribute("userId");
-            String userRole = (String) session.getAttribute("userRole");
-            
-            if (userId == null) {
+            String token = getTokenFromRequest(httpRequest);
+            if (token == null || !jwtUtil.isTokenValid(token)) {
                 response.put("error", "로그인이 필요합니다.");
                 return ResponseEntity.status(401).body(response);
             }
 
+            Long userId = jwtUtil.extractUserId(token);
+            boolean isAdmin = jwtUtil.extractIsAdmin(token);
+            
             boolean isAuthor = commentMapper.isCommentAuthor(id, userId);
-            boolean isAdmin = "ADMIN".equals(userRole);
             
             if (!isAuthor && !isAdmin) {
                 response.put("error", "댓글 삭제 권한이 없습니다.");

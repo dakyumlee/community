@@ -5,11 +5,12 @@ import com.community.dto.request.RegisterRequest;
 import com.community.dto.response.LoginResponse;
 import com.community.dto.response.UserResponse;
 import com.community.mapper.CommunityMapper;
+import com.community.util.JwtUtil;
 
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import jakarta.servlet.http.HttpSession;
+import jakarta.servlet.http.HttpServletRequest;
 import java.util.Map;
 
 @RestController
@@ -18,9 +19,24 @@ import java.util.Map;
 public class AuthController {
 
     private final CommunityMapper userMapper;
+    private final JwtUtil jwtUtil;
 
-    public AuthController(CommunityMapper userMapper) {
+    public AuthController(CommunityMapper userMapper, JwtUtil jwtUtil) {
         this.userMapper = userMapper;
+        this.jwtUtil = jwtUtil;
+    }
+
+    private Long getUserIdFromRequest(HttpServletRequest request) {
+        String authHeader = request.getHeader("Authorization");
+        if (authHeader != null && authHeader.startsWith("Bearer ")) {
+            String token = authHeader.substring(7);
+            try {
+                return jwtUtil.getUserIdFromToken(token);
+            } catch (Exception e) {
+                return null;
+            }
+        }
+        return null;
     }
 
     @PostMapping("/register")
@@ -85,11 +101,10 @@ public class AuthController {
     }
 
     @PostMapping("/login")
-    public ResponseEntity<?> login(@RequestBody LoginRequest request, HttpSession session) {
+    public ResponseEntity<?> login(@RequestBody LoginRequest request) {
         try {
-            System.out.println("=== 로그인 시도 ===");
+            System.out.println("=== JWT 로그인 시도 ===");
             System.out.println("이메일: " + request.getEmail());
-            System.out.println("기존 세션 ID: " + session.getId());
 
             UserResponse user = userMapper.findUserByEmail(request.getEmail());
             if (user == null) {
@@ -112,31 +127,18 @@ public class AuthController {
 
             boolean isAdmin = "ADMIN".equals(user.getRole());
 
-            // 세션에 모든 필요한 정보 저장
-            session.setAttribute("userId", user.getId());
-            session.setAttribute("email", user.getEmail());
-            session.setAttribute("nickname", user.getNickname());
-            session.setAttribute("userRole", user.getRole()); // 누락되었던 부분 추가
-            session.setAttribute("isAdmin", isAdmin);
-            
-            // 세션 타임아웃 설정 (30분)
-            session.setMaxInactiveInterval(30 * 60);
-
-            System.out.println("=== 세션 정보 저장 완료 ===");
-            System.out.println("세션 ID: " + session.getId());
-            System.out.println("저장된 userId: " + user.getId());
-            System.out.println("저장된 email: " + user.getEmail());
-            System.out.println("저장된 nickname: " + user.getNickname());
-            System.out.println("저장된 userRole: " + user.getRole());
-            System.out.println("저장된 isAdmin: " + isAdmin);
+            // JWT 토큰 생성
+            String jwtToken = jwtUtil.generateToken(user.getEmail(), user.getId(), isAdmin);
+            System.out.println("JWT 토큰 생성 완료: " + jwtToken.substring(0, 20) + "...");
 
             LoginResponse response = new LoginResponse();
-            response.setToken("session-" + session.getId());
+            response.setToken(jwtToken);  // 실제 JWT 토큰 설정
             response.setId(user.getId());
             response.setEmail(user.getEmail());
             response.setNickname(user.getNickname());
             response.setIsAdmin(isAdmin);
 
+            System.out.println("=== JWT 로그인 응답 완료 ===");
             return ResponseEntity.ok(response);
 
         } catch (Exception e) {
@@ -148,12 +150,11 @@ public class AuthController {
     }
 
     @PostMapping("/logout")
-    public ResponseEntity<Map<String, String>> logout(HttpSession session) {
+    public ResponseEntity<Map<String, String>> logout() {
         try {
-            System.out.println("=== 로그아웃 처리 ===");
-            System.out.println("로그아웃할 세션 ID: " + session.getId());
-            session.invalidate();
-            System.out.println("세션 무효화 완료");
+            System.out.println("=== JWT 로그아웃 처리 ===");
+            // JWT는 클라이언트에서 토큰을 삭제하면 되므로 서버에서 할 일이 없음
+            System.out.println("JWT 로그아웃 완료 (클라이언트에서 토큰 삭제 필요)");
             return ResponseEntity.ok(Map.of("message", "로그아웃되었습니다"));
         } catch (Exception e) {
             System.out.println("로그아웃 에러: " + e.getMessage());
@@ -162,37 +163,33 @@ public class AuthController {
     }
 
     @GetMapping("/me")
-    public ResponseEntity<?> getCurrentUser(HttpSession session) {
+    public ResponseEntity<?> getCurrentUser(HttpServletRequest request) {
         try {
-            System.out.println("=== 현재 사용자 정보 조회 ===");
-            System.out.println("세션 ID: " + session.getId());
-            System.out.println("세션 생성 시간: " + new java.util.Date(session.getCreationTime()));
-            System.out.println("세션 마지막 접근 시간: " + new java.util.Date(session.getLastAccessedTime()));
+            System.out.println("=== JWT 현재 사용자 정보 조회 ===");
             
-            Long userId = (Long) session.getAttribute("userId");
-            String email = (String) session.getAttribute("email");
-            String nickname = (String) session.getAttribute("nickname");
-            String userRole = (String) session.getAttribute("userRole");
-            Boolean isAdmin = (Boolean) session.getAttribute("isAdmin");
-            
-            System.out.println("세션의 userId: " + userId);
-            System.out.println("세션의 email: " + email);
-            System.out.println("세션의 nickname: " + nickname);
-            System.out.println("세션의 userRole: " + userRole);
-            System.out.println("세션의 isAdmin: " + isAdmin);
-            
+            Long userId = getUserIdFromRequest(request);
             if (userId == null) {
-                System.out.println("세션에 userId가 없음 - 로그인 필요");
+                System.out.println("JWT 토큰이 없거나 유효하지 않음");
                 return ResponseEntity.status(401).body(Map.of("error", "로그인이 필요합니다"));
             }
 
+            System.out.println("JWT에서 추출한 userId: " + userId);
+
+            // 사용자 정보 조회
+            UserResponse user = userMapper.findUserById(userId);
+            if (user == null) {
+                System.out.println("사용자를 찾을 수 없음: " + userId);
+                return ResponseEntity.status(401).body(Map.of("error", "사용자를 찾을 수 없습니다"));
+            }
+
+            boolean isAdmin = "ADMIN".equals(user.getRole());
+
             Map<String, Object> userInfo = Map.of(
-                "id", userId,
-                "email", email != null ? email : "",
-                "nickname", nickname != null ? nickname : "",
-                "role", userRole != null ? userRole : "USER",
-                "isAdmin", isAdmin != null ? isAdmin : false,
-                "sessionId", session.getId()
+                "id", user.getId(),
+                "email", user.getEmail(),
+                "nickname", user.getNickname(),
+                "role", user.getRole(),
+                "isAdmin", isAdmin
             );
 
             System.out.println("반환할 사용자 정보: " + userInfo);
@@ -201,16 +198,15 @@ public class AuthController {
         } catch (Exception e) {
             System.out.println("사용자 정보 조회 에러: " + e.getMessage());
             e.printStackTrace();
-            return ResponseEntity.status(401).body(Map.of("error", "세션 오류가 발생했습니다"));
+            return ResponseEntity.status(401).body(Map.of("error", "토큰 오류가 발생했습니다"));
         }
     }
 
     @GetMapping("/test")
-    public ResponseEntity<Map<String, String>> test(HttpSession session) {
+    public ResponseEntity<Map<String, String>> test() {
         return ResponseEntity.ok(Map.of(
-            "message", "Auth controller is working!",
-            "timestamp", String.valueOf(System.currentTimeMillis()),
-            "sessionId", session.getId()
+            "message", "JWT Auth controller is working!",
+            "timestamp", String.valueOf(System.currentTimeMillis())
         ));
     }
 }

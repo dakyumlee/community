@@ -1,781 +1,476 @@
 let currentUser = null;
-let currentTab = 'profile';
-let currentMessageTab = 'received';
-let currentMessagePage = 0;
-let selectedMessageId = null;
 
-function showElement(element) {
-    if (element) {
-        element.classList.remove('hidden');
-        element.style.display = '';
-    }
-}
-
-function hideElement(element) {
-    if (element) {
-        element.classList.add('hidden');
-        element.style.display = 'none';
-    }
-}
-
-function setLoading(button, isLoading) {
-    if (!button) return;
-    
-    if (isLoading) {
-        button.disabled = true;
-        button.textContent = '처리 중...';
-    } else {
-        button.disabled = false;
-        button.textContent = button.dataset.originalText || '저장';
-    }
-}
-
-function validateFormField(field) {
-    if (field.classList.contains('error')) {
-        field.classList.remove('error');
-    }
-    return true;
-}
-
-function hasValidationErrors(errors) {
-    return Object.keys(errors).length > 0;
-}
-
-function showValidationErrors(errors, form) {
-    Object.keys(errors).forEach(fieldName => {
-        const field = form.querySelector(`[name="${fieldName}"]`);
-        if (field) {
-            field.classList.add('error');
-        }
-    });
-}
-
-function sanitizeHTML(str) {
-    if (!str) return '';
-    const div = document.createElement('div');
-    div.textContent = str;
-    return div.innerHTML;
-}
-
-function formatDate(dateString) {
-    if (!dateString) return '';
-    const date = new Date(dateString);
-    return date.toLocaleDateString('ko-KR');
-}
-
-function truncateText(text, maxLength) {
-    if (!text || text.length <= maxLength) return text;
-    return text.substring(0, maxLength) + '...';
-}
-
-function showNotification(message, type) {
-    console.log(`[${type.toUpperCase()}] ${message}`);
-    if (type === 'success') {
-        alert(message);
-    } else if (type === 'error') {
-        alert(message);
-    }
-}
-
-function initMyPagePage() {
-    if (!Auth.isAuthenticated()) {
-        window.location.href = '/login';
-        return;
-    }
-    
-    setupTabs();
+document.addEventListener('DOMContentLoaded', function() {
     loadUserProfile();
-    setupProfileForm();
-    setupPasswordForm();
-    updateUnreadMessageCount();
-}
-
-function setupTabs() {
-    const tabButtons = document.querySelectorAll('.tab-btn');
-    const tabPanes = document.querySelectorAll('.tab-pane');
-    
-    console.log('탭 버튼 개수:', tabButtons.length);
-    console.log('탭 패널 개수:', tabPanes.length);
-    
-    tabButtons.forEach(btn => {
-        btn.addEventListener('click', function() {
-            const tabName = this.dataset.tab;
-            console.log('탭 클릭됨:', tabName);
-            
-            tabButtons.forEach(b => b.classList.remove('active'));
-            this.classList.add('active');
-            
-            tabPanes.forEach(pane => {
-                pane.classList.remove('active');
-            });
-            
-            const targetContent = document.getElementById(`${tabName}-tab`);
-            if (targetContent) {
-                targetContent.classList.add('active');
-                console.log('탭 표시됨:', tabName);
-            } else {
-                console.error('탭을 찾을 수 없음:', `${tabName}-tab`);
-            }
-            
-            currentTab = tabName;
-            
-            if (tabName === 'messages') {
-                initMessageTab();
-            } else if (tabName === 'posts') {
-                loadMyPosts();
-            } else if (tabName === 'stats') {
-                loadMyStats();
-            }
-        });
-    });
-    
-    console.log('탭 이벤트 리스너 등록 완료');
-}
-
-function setupProfileForm() {
-    const profileForm = document.getElementById('profile-form');
-    if (!profileForm) return;
-    
-    profileForm.addEventListener('submit', handleUpdateProfile);
-    
-    const inputs = profileForm.querySelectorAll('input, select, textarea');
-    inputs.forEach(input => {
-        input.addEventListener('blur', () => validateFormField(input));
-        input.addEventListener('input', () => {
-            if (input.classList.contains('error')) {
-                validateFormField(input);
-            }
-        });
-    });
-}
-
-function setupPasswordForm() {
-    const passwordForm = document.getElementById('password-form');
-    if (!passwordForm) return;
-    
-    passwordForm.addEventListener('submit', handleUpdatePassword);
-    
-    const inputs = passwordForm.querySelectorAll('input');
-    inputs.forEach(input => {
-        input.addEventListener('blur', () => validateFormField(input));
-        input.addEventListener('input', () => {
-            if (input.classList.contains('error')) {
-                validateFormField(input);
-            }
-        });
-    });
-}
+    initTabNavigation();
+    initProfileForm();
+    initPasswordForm();
+    initMessageTabNavigation();
+});
 
 async function loadUserProfile() {
-    const loading = document.getElementById('loading');
-    const errorBanner = document.getElementById('error-banner');
-    const profileContainer = document.getElementById('profile-container');
-    
     try {
-        if (loading) showElement(loading);
-        if (errorBanner) hideElement(errorBanner);
-        
-        console.log('=== 사용자 프로필 로딩 시작 ===');
-        
-        const userInfo = await APIClient.get('/api/auth/me');
-        
-        if (!userInfo || !userInfo.id) {
-            throw new Error('로그인 세션이 만료되었습니다.');
-        }
-        
-        console.log('현재 로그인 사용자:', userInfo);
-        
-        const userProfile = await APIClient.get(`/api/users/profile?userId=${userInfo.id}`);
-        currentUser = userProfile;
-        
-        displayUserProfile(userProfile);
-        if (profileContainer) showElement(profileContainer);
-        
-        console.log('사용자 프로필 로딩 완료');
-        
-    } catch (error) {
-        console.error('사용자 프로필 로딩 실패:', error);
-        
-        if (error.status === 401) {
-            alert('로그인 세션이 만료되었습니다. 다시 로그인해주세요.');
-            window.location.href = '/login';
+        currentUser = await AuthAPI.getCurrentUser();
+        if (!currentUser) {
+            window.location.href = '/login.html';
             return;
         }
         
-        const errorMessage = document.getElementById('error-message');
-        if (errorMessage) {
-            errorMessage.textContent = error.message || '사용자 정보를 불러오는데 실패했습니다.';
-        }
-        if (errorBanner) showElement(errorBanner);
-        
-    } finally {
-        if (loading) hideElement(loading);
+        displayUserProfile(currentUser);
+        showProfileContainer();
+        loadMyPosts();
+        loadUserStats();
+        loadMessages();
+    } catch (error) {
+        console.error('사용자 정보 로드 실패:', error);
+        showError('사용자 정보를 불러오는 중 오류가 발생했습니다.');
+        window.location.href = '/login.html';
     }
 }
 
-function displayUserProfile(user) {
-    console.log('사용자 프로필 표시:', user);
+function showProfileContainer() {
+    const loading = document.getElementById('loading');
+    const profileContainer = document.getElementById('profile-container');
     
+    if (loading) loading.classList.add('hidden');
+    if (profileContainer) profileContainer.classList.remove('hidden');
+}
+
+function displayUserProfile(user) {
+    const profileEmail = document.getElementById('profile-email');
+    const profileNickname = document.getElementById('profile-nickname');
     const emailInput = document.getElementById('email');
     const departmentInput = document.getElementById('department');
     const jobPositionInput = document.getElementById('job-position');
     const nicknameInput = document.getElementById('nickname');
     const companyInput = document.getElementById('company');
-    
-    if (emailInput) emailInput.value = user.email || '';
+
+    if (profileEmail) profileEmail.textContent = user.email;
+    if (profileNickname) profileNickname.textContent = user.nickname;
+    if (emailInput) emailInput.value = user.email;
     if (departmentInput) departmentInput.value = user.department || '';
     if (jobPositionInput) jobPositionInput.value = user.jobPosition || '';
     if (nicknameInput) nicknameInput.value = user.nickname || '';
     if (companyInput) companyInput.value = user.company || '';
-    
-    const joinDate = document.getElementById('join-date');
-    if (joinDate && user.createdAt) {
-        const date = new Date(user.createdAt);
-        joinDate.textContent = date.toLocaleDateString('ko-KR');
-    }
-    
-    const profileEmail = document.getElementById('profile-email');
-    if (profileEmail) {
-        profileEmail.textContent = user.email;
-    }
-    
-    const profileNickname = document.getElementById('profile-nickname');
-    if (profileNickname) {
-        profileNickname.textContent = user.nickname;
-    }
-    
-    console.log('프로필 표시 완료');
 }
 
-async function handleUpdateProfile(e) {
-    e.preventDefault();
-    
-    const form = e.target;
-    const submitBtn = document.getElementById('profile-submit-btn');
-    const errorBanner = document.getElementById('profile-error-banner');
-    const errorMessage = document.getElementById('profile-error-message');
-    
-    const formData = {
-        department: form.department.value.trim(),
-        jobPosition: form.jobPosition.value.trim(),
-        nickname: form.nickname.value.trim(),
-        company: form.company.value.trim()
-    };
-    
-    const errors = validateProfileForm(formData);
-    
-    if (hasValidationErrors(errors)) {
-        showValidationErrors(errors, form);
-        return;
-    }
-    
-    try {
-        setLoading(submitBtn, true);
-        hideElement(errorBanner);
-        
-        await UserAPI.updateProfile(currentUser.id, formData);
-        
-        const updatedUser = { ...currentUser, ...formData };
-        currentUser = updatedUser;
-        Auth.setUser(updatedUser);
-        
-        showNotification('프로필이 성공적으로 업데이트되었습니다.', 'success');
-        
-    } catch (error) {
-        console.error('Profile update error:', error);
-        
-        if (errorMessage) {
-            errorMessage.textContent = error.message || 'SERVER_ERROR';
-        }
-        showElement(errorBanner);
-        
-    } finally {
-        setLoading(submitBtn, false);
-    }
-}
+function initTabNavigation() {
+    const tabButtons = document.querySelectorAll('.tab-btn');
+    const tabPanes = document.querySelectorAll('.tab-pane');
 
-async function handleUpdatePassword(e) {
-    e.preventDefault();
-    
-    const form = e.target;
-    const submitBtn = document.getElementById('password-submit-btn');
-    const errorBanner = document.getElementById('password-error-banner');
-    const errorMessage = document.getElementById('password-error-message');
-    
-    const formData = {
-        newPassword: form.newPassword.value,
-        confirmPassword: form.confirmPassword.value
-    };
-    
-    const errors = validatePasswordForm(formData);
-    
-    if (hasValidationErrors(errors)) {
-        showValidationErrors(errors, form);
-        return;
-    }
-    
-    try {
-        setLoading(submitBtn, true);
-        hideElement(errorBanner);
-        
-        await UserAPI.updatePassword(currentUser.id, formData.newPassword);
-        
-        showNotification('비밀번호가 성공적으로 변경되었습니다.', 'success');
-        
-        form.reset();
-        
-    } catch (error) {
-        console.error('Password update error:', error);
-        
-        if (errorMessage) {
-            errorMessage.textContent = error.message || 'SERVER_ERROR';
-        }
-        showElement(errorBanner);
-        
-    } finally {
-        setLoading(submitBtn, false);
-    }
-}
-
-function validateProfileForm(data) {
-    const errors = {};
-    
-    if (!data.department || data.department.length < 2) {
-        errors.department = '부서는 2글자 이상 입력해주세요.';
-    }
-    
-    if (!data.jobPosition || data.jobPosition.length < 2) {
-        errors.jobPosition = '직책은 2글자 이상 입력해주세요.';
-    }
-    
-    if (!data.nickname || data.nickname.length < 2) {
-        errors.nickname = '닉네임은 2글자 이상 입력해주세요.';
-    }
-    
-    if (!data.company || data.company.length < 2) {
-        errors.company = '회사명은 2글자 이상 입력해주세요.';
-    }
-    
-    return errors;
-}
-
-function validatePasswordForm(data) {
-    const errors = {};
-    
-    if (!data.newPassword || data.newPassword.length < 8) {
-        errors.newPassword = '새 비밀번호는 8글자 이상 입력해주세요.';
-    }
-    
-    if (data.newPassword !== data.confirmPassword) {
-        errors.confirmPassword = '비밀번호가 일치하지 않습니다.';
-    }
-    
-    return errors;
-}
-
-function initMessageTab() {
-    setupMessageTabs();
-    loadReceivedMessages();
-}
-
-function setupMessageTabs() {
-    const messageTabBtns = document.querySelectorAll('.message-tab-btn');
-    
-    messageTabBtns.forEach(btn => {
-        btn.addEventListener('click', function() {
-            const tabType = this.dataset.messageTab;
+    tabButtons.forEach(button => {
+        button.addEventListener('click', function() {
+            const tabName = this.dataset.tab;
             
-            messageTabBtns.forEach(b => b.classList.remove('active'));
+            tabButtons.forEach(btn => btn.classList.remove('active'));
+            tabPanes.forEach(pane => pane.classList.remove('active'));
+            
             this.classList.add('active');
-            
-            document.getElementById('received-messages').classList.add('hidden');
-            document.getElementById('sent-messages').classList.add('hidden');
-            
-            currentMessageTab = tabType;
-            currentMessagePage = 0;
-            
-            if (tabType === 'received') {
-                document.getElementById('received-messages').classList.remove('hidden');
-                loadReceivedMessages();
-            } else if (tabType === 'sent') {
-                document.getElementById('sent-messages').classList.remove('hidden');
-                loadSentMessages();
+            const targetPane = document.getElementById(tabName + '-tab');
+            if (targetPane) {
+                targetPane.classList.add('active');
+            }
+
+            if (tabName === 'posts') {
+                loadMyPosts();
+            } else if (tabName === 'messages') {
+                loadMessages();
+            } else if (tabName === 'stats') {
+                loadUserStats();
             }
         });
     });
 }
 
-async function loadReceivedMessages() {
-    const container = document.getElementById('received-messages');
-    
+function initMessageTabNavigation() {
+    document.querySelectorAll('.message-tab-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            document.querySelectorAll('.message-tab-btn').forEach(b => b.classList.remove('active'));
+            this.classList.add('active');
+
+            const tabType = this.dataset.messageTab;
+            
+            const receivedContainer = document.getElementById('received-messages');
+            const sentContainer = document.getElementById('sent-messages');
+            
+            if (receivedContainer && sentContainer) {
+                if (tabType === 'received') {
+                    receivedContainer.classList.remove('hidden');
+                    sentContainer.classList.add('hidden');
+                    loadMessages();
+                } else if (tabType === 'sent') {
+                    receivedContainer.classList.add('hidden');
+                    sentContainer.classList.remove('hidden');
+                    loadSentMessages();
+                }
+            }
+        });
+    });
+}
+
+function initProfileForm() {
+    const profileForm = document.getElementById('profile-form');
+    if (profileForm) {
+        profileForm.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const formData = new FormData(this);
+            const profileData = {
+                department: formData.get('department'),
+                jobPosition: formData.get('jobPosition'),
+                nickname: formData.get('nickname'),
+                company: formData.get('company'),
+                userId: currentUser.id
+            };
+
+            try {
+                const response = await APIClient.put(`/users/${currentUser.id}`, null, profileData);
+                
+                showSuccess('프로필이 업데이트되었습니다.');
+                await loadUserProfile();
+            } catch (error) {
+                console.error('프로필 업데이트 실패:', error);
+                showError('프로필 업데이트에 실패했습니다.');
+            }
+        });
+    }
+}
+
+function initPasswordForm() {
+    const passwordForm = document.getElementById('password-form');
+    if (passwordForm) {
+        passwordForm.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const formData = new FormData(this);
+            const newPassword = formData.get('newPassword');
+            const confirmPassword = formData.get('confirmPassword');
+
+            if (newPassword !== confirmPassword) {
+                showError('새 비밀번호가 일치하지 않습니다.');
+                return;
+            }
+
+            if (newPassword.length < 8) {
+                showError('비밀번호는 8자 이상이어야 합니다.');
+                return;
+            }
+
+            try {
+                await APIClient.put(`/users/${currentUser.id}/password`, null, {
+                    newPassword: newPassword,
+                    userId: currentUser.id
+                });
+                
+                showSuccess('비밀번호가 변경되었습니다.');
+                this.reset();
+            } catch (error) {
+                console.error('비밀번호 변경 실패:', error);
+                showError('비밀번호 변경에 실패했습니다.');
+            }
+        });
+    }
+}
+
+async function loadMyPosts() {
     try {
-        if (!currentUser || !currentUser.id) {
-            container.innerHTML = '<div class="error-banner"><p>사용자 정보를 먼저 로드해주세요.</p></div>';
+        if (!currentUser) return;
+        
+        const response = await APIClient.get(`/user/posts?userId=${currentUser.id}&page=0&size=20`);
+        displayMyPosts(response.posts);
+    } catch (error) {
+        console.error('내 게시글 로드 실패:', error);
+        const postsContainer = document.getElementById('my-posts-list');
+        if (postsContainer) {
+            postsContainer.innerHTML = '<div class="error-message">게시글을 불러오는 중 오류가 발생했습니다.</div>';
+        }
+    }
+}
+
+function displayMyPosts(posts) {
+    const container = document.getElementById('my-posts-list');
+    if (!container) return;
+
+    if (!posts || posts.length === 0) {
+        container.innerHTML = '<div class="no-data">작성한 게시글이 없습니다.</div>';
+        return;
+    }
+
+    container.innerHTML = posts.map(post => `
+        <div class="my-post-card" onclick="location.href='/post-detail.html?id=${post.id}'">
+            <div class="post-title">${post.title}</div>
+            <div class="post-meta">
+                <span class="post-date">${formatDate(post.createdAt)}</span>
+                <div class="post-stats">
+                    <span>좋아요: ${post.likeCount}</span>
+                    <span>댓글: ${post.commentCount}</span>
+                </div>
+            </div>
+            <div class="post-content">${truncateText(post.content, 100)}</div>
+        </div>
+    `).join('');
+}
+
+async function loadUserStats() {
+    try {
+        if (!currentUser) return;
+        
+        const response = await APIClient.get(`/user/stats?userId=${currentUser.id}`);
+        displayUserStats(response);
+    } catch (error) {
+        console.error('사용자 통계 로드 실패:', error);
+        displayUserStats({
+            postCount: 0,
+            commentCount: 0,
+            likeCount: 0
+        });
+    }
+}
+
+function displayUserStats(stats) {
+    const totalPostsElement = document.getElementById('total-posts');
+    const totalCommentsElement = document.getElementById('total-comments');
+    const totalLikesElement = document.getElementById('total-likes');
+    
+    if (totalPostsElement) totalPostsElement.textContent = stats.postCount || 0;
+    if (totalCommentsElement) totalCommentsElement.textContent = stats.commentCount || 0;
+    if (totalLikesElement) totalLikesElement.textContent = stats.likeCount || 0;
+}
+
+async function loadMessages() {
+    try {
+        const user = await AuthAPI.getCurrentUser();
+        if (!user) {
+            showError('사용자 정보를 찾을 수 없습니다.');
             return;
         }
-        
-        container.innerHTML = '<div class="loading"><div class="spinner"></div><p>받은 쪽지를 불러오는 중...</p></div>';
-        
-        const response = await APIClient.get(`/api/messages/received?userId=${currentUser.id}`);
-        
-        if (response.messages && response.messages.length > 0) {
-            renderMessageList(response.messages, container, 'received');
-        } else {
-            container.innerHTML = '<div class="empty-state"><h3>받은 쪽지가 없습니다</h3><p>새로운 쪽지를 기다려보세요!</p></div>';
-        }
-        
+
+        const receivedMessages = await APIClient.get('/posts/messages/received');
+        displayMessages(receivedMessages, 'received');
+        updateUnreadCount(receivedMessages);
+
     } catch (error) {
-        console.error('받은 쪽지 로드 실패:', error);
-        
-        if (error.status === 401) {
-            container.innerHTML = '<div class="error-banner"><p>로그인이 필요합니다.</p></div>';
-        } else {
-            container.innerHTML = '<div class="error-banner"><p>받은 쪽지를 불러오는데 실패했습니다.</p></div>';
-        }
+        console.error('쪽지 로드 실패:', error);
+        showError('쪽지를 불러오는 중 오류가 발생했습니다.');
     }
 }
 
 async function loadSentMessages() {
-    const container = document.getElementById('sent-messages');
-    
     try {
-        if (!currentUser || !currentUser.id) {
-            container.innerHTML = '<div class="error-banner"><p>사용자 정보를 먼저 로드해주세요.</p></div>';
-            return;
-        }
-        
-        container.innerHTML = '<div class="loading"><div class="spinner"></div><p>보낸 쪽지를 불러오는 중...</p></div>';
-        
-        console.log('보낸쪽지 요청 userId:', currentUser.id);
-        
-        const response = await APIClient.get(`/api/messages/sent?userId=${currentUser.id}`);
-        
-        console.log('보낸 쪽지 응답:', response);
-        
-        if (response && response.messages && response.messages.length > 0) {
-            renderMessageList(response.messages, container, 'sent');
-        } else {
-            container.innerHTML = '<div class="empty-state"><h3>보낸 쪽지가 없습니다</h3><p>새로운 쪽지를 보내보세요!</p></div>';
-        }
-        
+        const sentMessages = await APIClient.get('/posts/messages/sent');
+        displayMessages(sentMessages, 'sent');
     } catch (error) {
         console.error('보낸 쪽지 로드 실패:', error);
-        
-        if (error.status === 401) {
-            container.innerHTML = '<div class="error-banner"><p>로그인이 필요합니다.</p></div>';
-        } else if (error.status === 404) {
-            container.innerHTML = '<div class="error-banner"><p>보낸쪽지 API를 찾을 수 없습니다.</p></div>';
-        } else {
-            container.innerHTML = '<div class="error-banner"><p>보낸 쪽지를 불러오는데 실패했습니다.</p></div>';
-        }
+        showError('보낸 쪽지를 불러오는 중 오류가 발생했습니다.');
     }
 }
 
-function renderMessageList(messages, container, type) {
-    let html = '<div class="message-list">';
-    
-    messages.forEach(message => {
-        html += createMessageCard(message, type);
-    });
-    
-    html += '</div>';
-    container.innerHTML = html;
-}
-
-function createMessageCard(message, type) {
-    console.log('메시지 카드 생성:', message, 'type:', type);
-    
-    const isUnread = !message.isRead && type === 'received';
-    const unreadClass = isUnread ? 'unread' : '';
-    
-    let contactInfo = '';
-    if (type === 'received') {
-        contactInfo = `<strong>보낸이:</strong> ${sanitizeHTML(message.senderName || '알 수 없음')}`;
-    } else {
-        contactInfo = `<strong>받는이:</strong> ${sanitizeHTML(message.receiverName || '알 수 없음')}`;
-    }
-    
-    return `
-        <div class="message-card ${unreadClass}" onclick="openMessageDetail(${message.id})">
-            <div class="message-meta">
-                <span>${contactInfo}</span>
-                <div>
-                    <span class="message-date">${formatDate(message.createdAt)}</span>
-                </div>
-            </div>
-            <div class="message-content">
-                ${sanitizeHTML(truncateText(message.content, 100))}
-            </div>
-            <div class="message-actions">
-                <button onclick="deleteMessage(${message.id}, event)" class="btn btn-sm btn-danger">삭제</button>
-            </div>
-        </div>
-    `;
-}
-
-async function openMessageDetail(messageId) {
-    try {
-        if (!currentUser || !currentUser.id) {
-            alert('사용자 정보가 없습니다.');
-            return;
-        }
-        
-        if (currentMessageTab === 'received') {
-            await APIClient.put(`/api/messages/${messageId}/read`);
-        }
-        
-        const endpoint = currentMessageTab === 'received' ? 
-            `/api/messages/received` : 
-            `/api/messages/sent`;
-        
-        const response = await APIClient.get(endpoint);
-        const message = response.messages.find(m => m.id === messageId);
-        
-        if (message) {
-            alert(`쪽지 내용:\n\n${message.content}`);
-            
-            if (currentMessageTab === 'received') {
-                loadReceivedMessages();
-                updateUnreadMessageCount();
-            }
-        }
-        
-    } catch (error) {
-        console.error('쪽지 상세 보기 실패:', error);
-        showNotification('쪽지를 불러오는데 실패했습니다.', 'error');
-    }
-}
-
-async function deleteMessage(messageId, event) {
-    event.stopPropagation();
-    
-    if (!confirm('이 쪽지를 삭제하시겠습니까?')) {
+async function deleteMessage(messageId, deleteType) {
+    if (!confirm('정말 삭제하시겠습니까?')) {
         return;
     }
+
+    const messageCard = document.querySelector(`[data-id="${messageId}"]`);
     
     try {
-        if (!currentUser || !currentUser.id) {
-            throw new Error('사용자 정보가 없습니다.');
+        const token = Auth.getToken();
+        if (!token) {
+            showError('로그인이 필요합니다.');
+            return;
+        }
+
+        const response = await fetch(`/api/posts/messages/${messageId}`, {
+            method: 'DELETE',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': 'Bearer ' + token
+            },
+            body: JSON.stringify({ deleteType: deleteType })
+        });
+
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
         }
         
-        const endpoint = currentMessageTab === 'received' ? 
-            `/api/messages/received/${messageId}` :
-            `/api/messages/sent/${messageId}`;
+        const result = await response.json();
         
-        await APIClient.delete(endpoint);
-        
-        if (currentMessageTab === 'received') {
-            loadReceivedMessages();
-            updateUnreadMessageCount();
+        if (result.success) {
+            if (messageCard) {
+                messageCard.style.opacity = '0.5';
+                messageCard.style.pointerEvents = 'none';
+                setTimeout(() => {
+                    messageCard.remove();
+                }, 200);
+            }
+            
+            showSuccess('쪽지가 삭제되었습니다.');
+            
+            const currentTab = document.querySelector('.message-tab-btn.active');
+            if (currentTab) {
+                const tabType = currentTab.dataset.messageTab;
+                setTimeout(() => {
+                    if (tabType === 'received') {
+                        loadMessages();
+                    } else {
+                        loadSentMessages();
+                    }
+                }, 500);
+            }
         } else {
-            loadSentMessages();
+            showError(result.message || '쪽지 삭제에 실패했습니다.');
         }
-        
-        showNotification('쪽지가 삭제되었습니다.', 'success');
-        
     } catch (error) {
         console.error('쪽지 삭제 실패:', error);
-        showNotification('쪽지 삭제에 실패했습니다.', 'error');
+        showError('쪽지 삭제 중 오류가 발생했습니다.');
+        
+        if (messageCard) {
+            messageCard.style.opacity = '1';
+            messageCard.style.pointerEvents = 'auto';
+        }
     }
 }
 
-async function sendNewMessage(recipientId, content) {
-    try {
-        if (!currentUser || !currentUser.id) {
-            return false;
-        }
-        
-        await APIClient.post('/api/messages', {
-            receiverId: recipientId,
-            content: content,
-            senderId: currentUser.id
-        });
-        
-        setTimeout(() => {
-            if (currentMessageTab === 'sent') {
-                loadSentMessages();
-            }
-        }, 500);
-        
-        return true;
-    } catch (error) {
-        console.error('쪽지 전송 실패:', error);
-        return false;
-    }
-}
-
-async function updateUnreadMessageCount() {
-    try {
-        if (!currentUser || !currentUser.id) {
-            return 0;
-        }
-        
-        const response = await APIClient.get(`/api/messages/received`);
-        const unreadCount = response.messages ? response.messages.filter(m => !m.isRead).length : 0;
-        
-        const notificationBadge = document.getElementById('message-notification-badge');
-        if (notificationBadge) {
-            if (unreadCount > 0) {
-                notificationBadge.textContent = unreadCount;
-                notificationBadge.classList.remove('hidden');
-            } else {
-                notificationBadge.classList.add('hidden');
-            }
-        }
-        
-        const messageTabBadge = document.getElementById('message-tab-badge');
-        if (messageTabBadge) {
-            if (unreadCount > 0) {
-                messageTabBadge.textContent = unreadCount;
-                messageTabBadge.classList.remove('hidden');
-            } else {
-                messageTabBadge.classList.add('hidden');
-            }
-        }
-        
-        return unreadCount;
-    } catch (error) {
-        console.error('읽지 않은 쪽지 개수 업데이트 실패:', error);
-        return 0;
-    }
-}
-
-const UserAPI = {
-    async getProfile(userId) {
-        try {
-            return await APIClient.get(`/api/users/profile?userId=${userId}`);
-        } catch (error) {
-            throw error;
-        }
-    },
+function displayMessages(messages, type) {
+    const container = document.getElementById(type === 'received' ? 'received-messages' : 'sent-messages');
+    if (!container) return;
     
-    async updateProfile(userId, data) {
-        try {
-            const params = new URLSearchParams({
-                department: data.department,
-                jobPosition: data.jobPosition,
-                nickname: data.nickname,
-                company: data.company,
-                userId: userId
-            });
-            
-            return await APIClient.put(`/api/users/${userId}?${params}`);
-        } catch (error) {
-            throw error;
-        }
-    },
-    
-    async updatePassword(userId, newPassword) {
-        try {
-            const params = new URLSearchParams({
-                newPassword: newPassword,
-                userId: userId
-            });
-            
-            return await APIClient.put(`/api/users/${userId}/password?${params}`);
-        } catch (error) {
-            throw error;
-        }
+    if (!messages || messages.length === 0) {
+        container.innerHTML = '<div class="no-messages">쪽지가 없습니다.</div>';
+        return;
     }
-};
 
-async function loadMyPosts() {
-    const container = document.getElementById('my-posts-list');
-    
-    try {
-        if (!currentUser || !currentUser.id) {
-            container.innerHTML = '<div class="error-banner"><p>사용자 정보를 먼저 로드해주세요.</p></div>';
-            return;
-        }
-        
-        container.innerHTML = '<div class="loading"><div class="spinner"></div><p>내 게시글을 불러오는 중...</p></div>';
-        
-        const response = await APIClient.get(`/api/posts?page=0&size=50`);
-        
-        if (response && response.posts) {
-            const myPosts = response.posts.filter(post => post.authorId === currentUser.id);
-            
-            if (myPosts.length > 0) {
-                let html = '<div class="my-posts-list">';
-                myPosts.forEach(post => {
-                    html += createMyPostCard(post);
-                });
-                html += '</div>';
-                container.innerHTML = html;
-            } else {
-                container.innerHTML = '<div class="empty-state"><h3>작성한 게시글이 없습니다</h3><p>첫 번째 게시글을 작성해보세요!</p></div>';
-            }
-        } else {
-            container.innerHTML = '<div class="empty-state"><h3>작성한 게시글이 없습니다</h3><p>첫 번째 게시글을 작성해보세요!</p></div>';
-        }
-        
-    } catch (error) {
-        console.error('내 게시글 로드 실패:', error);
-        container.innerHTML = '<div class="error-banner"><p>게시글을 불러오는데 실패했습니다.</p></div>';
-    }
-}
-
-function createMyPostCard(post) {
-    const createdAt = formatDate(post.createdAt);
-    
-    return `
-        <div class="my-post-card" onclick="window.location.href='/post-detail?id=${post.id}'">
-            <div class="post-header">
-                <h4 class="post-title">${sanitizeHTML(post.title)}</h4>
-                <div class="post-meta">
-                    <span class="post-date">${createdAt}</span>
-                    <div class="post-stats">
-                        <span>좋아요 ${post.likeCount || 0}</span>
-                        <span>댓글 ${post.commentCount || 0}</span>
-                    </div>
-                </div>
+    container.innerHTML = messages.map(message => `
+        <div class="message-card ${message.isRead === 0 ? 'unread' : ''}" data-id="${message.id}">
+            <div class="message-meta">
+                <strong>${type === 'received' ? message.senderName : message.receiverName}</strong>
+                <span class="message-date">${formatDate(message.createdAt)}</span>
+                ${message.isRead === 0 && type === 'received' ? '<span class="unread-badge">NEW</span>' : ''}
             </div>
-            <div class="post-content">
-                ${sanitizeHTML(truncateText(post.content, 100))}
+            <div class="message-content">${message.title}</div>
+            <div class="message-preview">${truncateText(message.content, 50)}</div>
+            <div class="message-actions">
+                <button class="btn btn-sm btn-outline-primary view-message-btn" data-id="${message.id}">읽기</button>
+                <button class="btn btn-sm btn-outline-danger delete-message-btn" 
+                        data-id="${message.id}" 
+                        data-type="${type === 'received' ? 'receiver' : 'sender'}">삭제</button>
             </div>
         </div>
-    `;
+    `).join('');
+
+    container.querySelectorAll('.view-message-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const messageId = e.target.dataset.id;
+            viewMessageDetail(messageId);
+        });
+    });
+
+    container.querySelectorAll('.delete-message-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const messageId = e.target.dataset.id;
+            const deleteType = e.target.dataset.type;
+            deleteMessage(messageId, deleteType);
+        });
+    });
 }
 
-async function loadMyStats() {
-    const totalPostsEl = document.getElementById('total-posts');
-    const totalCommentsEl = document.getElementById('total-comments');
-    const totalLikesEl = document.getElementById('total-likes');
-    
+async function viewMessageDetail(messageId) {
     try {
-        if (!currentUser || !currentUser.id) {
-            return;
-        }
-        
-        if (totalPostsEl) totalPostsEl.textContent = '로딩...';
-        if (totalCommentsEl) totalCommentsEl.textContent = '로딩...';
-        if (totalLikesEl) totalLikesEl.textContent = '로딩...';
-        
-        const response = await APIClient.get(`/api/posts?page=0&size=50`);
-        
-        if (response && response.posts) {
-            const myPosts = response.posts.filter(post => post.authorId === currentUser.id);
-            const totalLikes = myPosts.reduce((sum, post) => sum + (post.likeCount || 0), 0);
-            
-            if (totalPostsEl) totalPostsEl.textContent = myPosts.length;
-            if (totalLikesEl) totalLikesEl.textContent = totalLikes;
-        } else {
-            if (totalPostsEl) totalPostsEl.textContent = '0';
-            if (totalLikesEl) totalLikesEl.textContent = '0';
-        }
-        
-        if (totalCommentsEl) totalCommentsEl.textContent = '-';
-        
+        await APIClient.put(`/posts/messages/${messageId}/read`);
+        window.location.href = `/Message/View?id=${messageId}`;
     } catch (error) {
-        console.error('통계 로드 실패:', error);
-        if (totalPostsEl) totalPostsEl.textContent = '-';
-        if (totalCommentsEl) totalCommentsEl.textContent = '-';
-        if (totalLikesEl) totalLikesEl.textContent = '-';
+        console.error('쪽지 읽기 실패:', error);
+        showError('쪽지를 읽는 중 오류가 발생했습니다.');
     }
 }
 
-if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', initMyPagePage);
-} else {
-    initMyPagePage();
+async function deleteMessage(messageId, deleteType) {
+    if (!confirm('정말 삭제하시겠습니까?')) {
+        return;
+    }
+
+    try {
+        const token = Auth.getToken();
+        if (!token) {
+            showError('로그인이 필요합니다.');
+            return;
+        }
+
+        const response = await fetch(`/api/posts/messages/${messageId}`, {
+            method: 'DELETE',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': 'Bearer ' + token
+            },
+            body: JSON.stringify({ deleteType: deleteType })
+        });
+
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            const messageCard = document.querySelector(`[data-id="${messageId}"]`);
+            if (messageCard) {
+                messageCard.remove();
+            }
+            
+            showSuccess('쪽지가 삭제되었습니다.');
+            
+            setTimeout(() => {
+                if (deleteType === 'received') {
+                    loadMessages();
+                } else {
+                    loadSentMessages();
+                }
+            }, 300);
+        } else {
+            showError(result.message || '쪽지 삭제에 실패했습니다.');
+        }
+    } catch (error) {
+        console.error('쪽지 삭제 실패:', error);
+        showError('쪽지 삭제 중 오류가 발생했습니다.');
+    }
+}
+
+function updateUnreadCount(messages) {
+    const badge = document.getElementById('message-tab-badge');
+    if (!badge) return;
+    
+    const unreadCount = messages.filter(msg => msg.isRead === 0).length;
+    
+    if (unreadCount > 0) {
+        badge.textContent = unreadCount;
+        badge.classList.remove('hidden');
+    } else {
+        badge.classList.add('hidden');
+    }
+}
+
+function formatDate(dateString) {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diff = now - date;
+    const oneDay = 24 * 60 * 60 * 1000;
+
+    if (diff < oneDay) {
+        return date.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' });
+    } else {
+        return date.toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' });
+    }
+}
+
+function truncateText(text, maxLength) {
+    return text && text.length > maxLength ? text.substring(0, maxLength) + '...' : text || '';
+}
+
+function showSuccess(message) {
+    alert(message);
+}
+
+function showError(message) {
+    alert(message);
 }

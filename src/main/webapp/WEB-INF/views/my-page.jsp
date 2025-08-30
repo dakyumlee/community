@@ -531,21 +531,6 @@
     </main>
 
     <div id="message-notification-badge" class="notification-badge hidden"></div>
-    
-    <script>
-    // 호준이 임의로 넣어둠
-    const userId = "${sessionScope.userId}"; 
-
-    const messageBtn = document.getElementById('hojun');
-    messageBtn.addEventListener('click', function() {
-        if (userId && userId.trim() !== '') {           
-            location.href = `/Message/List/Received?userId=${userId}`;
-        } else {
-            alert("로그인 정보가 없습니다.");
-            window.location.href = "/login";
-        }
-    });
-</script>
 
     <script src="/static/js/utils/constants.js"></script>
     <script src="/static/js/utils/helpers.js"></script>

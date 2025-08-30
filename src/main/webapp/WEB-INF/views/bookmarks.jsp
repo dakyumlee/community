@@ -9,7 +9,7 @@
     <link rel="stylesheet" href="/static/css/layout.css">
     <link rel="stylesheet" href="/static/css/pages.css">
 </head>
-<body>
+<body class="bookmarks-page">
     <header class="header">
         <div class="header-container">
             <a href="/index" class="logo">

@@ -148,22 +148,18 @@ async function handlePostBookmark(postId) {
     bookmarkBtn.classList.add('loading');
     
     try {
-        if (isBookmarked) {
-            await BookmarkAPI.removeBookmark(postId);
-            
-            bookmarkBtn.classList.remove('bookmarked');
-            bookmarkBtn.setAttribute('title', '북마크 추가');
-            icon.textContent = '☆';
-            
-            showNotification('북마크가 해제되었습니다.', 'info');
-        } else {
-            await BookmarkAPI.addBookmark(postId);
-            
+        const response = await APIClient.post(`/posts/${postId}/bookmark`);
+        
+        if (response.isBookmarked) {
             bookmarkBtn.classList.add('bookmarked');
             bookmarkBtn.setAttribute('title', '북마크 해제');
             icon.textContent = '★';
-            
             showNotification('북마크에 추가되었습니다.', 'success');
+        } else {
+            bookmarkBtn.classList.remove('bookmarked');
+            bookmarkBtn.setAttribute('title', '북마크 추가');
+            icon.textContent = '☆';
+            showNotification('북마크가 해제되었습니다.', 'info');
         }
         
     } catch (error) {
@@ -238,7 +234,7 @@ async function toggleBookmark(postId, event) {
     if (!Auth.requireAuth()) return;
     
     try {
-        const response = await BookmarkAPI.toggleBookmark(postId);
+        const response = await APIClient.post(`/bookmarks/${postId}/toggle`);
         
         const button = event.currentTarget;
         const icon = button.querySelector('.action-icon');

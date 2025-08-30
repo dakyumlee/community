@@ -1,6 +1,5 @@
 package com.community.mapper;
 
-import com.community.dto.request.MessageRequest;
 import com.community.dto.response.*;
 import com.community.suin.CommentResponse;
 
@@ -34,6 +33,8 @@ public interface CommunityMapper {
     boolean addBookmark(@Param("userId") Long userId, @Param("postId") Long postId);
     boolean removeBookmark(@Param("userId") Long userId, @Param("postId") Long postId);
     void toggleBookmark(@Param("userId") Long userId, @Param("postId") Long postId);
+    List<PostResponse> findBookmarkedPosts(@Param("userId") Long userId, @Param("offset") int offset, @Param("size") int size);
+    int getBookmarkedPostCount(@Param("userId") Long userId);
     
     List<CommentResponse> findCommentsByPostId(@Param("postId") Long postId);
     Long insertComment(@Param("content") String content, @Param("postId") Long postId, @Param("userId") Long userId, @Param("parentId") Long parentId);
@@ -51,14 +52,6 @@ public interface CommunityMapper {
     boolean addLike(@Param("userId") Long userId, @Param("postId") Long postId);
     boolean removeLike(@Param("userId") Long userId, @Param("postId") Long postId);
     void toggleLike(@Param("userId") Long userId, @Param("postId") Long postId);
-    
-    List<MessageResponse> getReceivedMessages(@Param("userId") Long userId);
-    List<MessageResponse> getSentMessages(@Param("userId") Long userId);
-    MessageResponse getMessageById(@Param("id") Long id);
-    void createMessage(@Param("request") MessageRequest request, @Param("senderId") Long senderId);
-    void markAsRead(@Param("id") Long id);
-    void deleteByReceiver(@Param("id") Long id);
-    void deleteBySender(@Param("id") Long id);
     
     PostResponse findPostById(@Param("id") Long id);
     void insertPost(Map<String, Object> params);

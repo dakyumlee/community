@@ -164,6 +164,48 @@
         END;
     </update>
 
+    <select id="findBookmarkedPosts" resultType="com.community.dto.response.PostResponse">
+        SELECT 
+            p.id,
+            p.title,
+            p.content,
+            p.author_id as authorId,
+            u.nickname as authorNickname,
+            p.created_at as createdAt,
+            p.updated_at as updatedAt,
+            NVL(l.like_count, 0) as likeCount,
+            NVL(c.comment_count, 0) as commentCount,
+            (
+                SELECT LISTAGG('/api/posts/images/' || pf.id, ',') WITHIN GROUP (ORDER BY pf.id)
+                FROM post_files pf
+                WHERE pf.post_id = p.id
+            ) as imageUrls,
+            CASE WHEN u.role = 'ADMIN' THEN 1 ELSE 0 END as isAdminPost
+        FROM posts p 
+        JOIN users u ON p.author_id = u.id
+        JOIN bookmarks b ON p.id = b.post_id
+        LEFT JOIN (
+            SELECT post_id, COUNT(*) as like_count 
+            FROM likes 
+            GROUP BY post_id
+        ) l ON p.id = l.post_id
+        LEFT JOIN (
+            SELECT post_id, COUNT(*) as comment_count 
+            FROM comments 
+            GROUP BY post_id
+        ) c ON p.id = c.post_id
+        WHERE b.user_id = #{userId}
+        ORDER BY b.created_at DESC
+        OFFSET #{offset} ROWS FETCH NEXT #{size} ROWS ONLY
+    </select>
+
+    <select id="getBookmarkedPostCount" resultType="int">
+        SELECT COUNT(*) 
+        FROM bookmarks b
+        JOIN posts p ON b.post_id = p.id
+        WHERE b.user_id = #{userId}
+    </select>
+
     <insert id="insertPostFile" parameterType="map">
         <selectKey keyProperty="id" resultType="Long" order="BEFORE">
             SELECT NVL(MAX(id),0)+1 FROM post_files
@@ -220,88 +262,6 @@
                 VALUES ((SELECT NVL(MAX(id),0)+1 FROM likes), #{userId}, #{postId}, SYSDATE);
             END IF;
         END;
-    </update>
-
-    <select id="getReceivedMessages" resultType="com.community.dto.response.MessageResponse">
-        SELECT 
-            m.id,
-            m.title,
-            m.content,
-            m.sender_id as senderId,
-            u1.nickname as senderName,
-            m.receiver_id as receiverId,
-            u2.nickname as receiverName,
-            m.is_read as isRead,
-            m.deleted_by_sender as deletedBySender,
-            m.deleted_by_receiver as deletedByReceiver,
-            m.created_at as createdAt,
-            m.read_at as readAt
-        FROM messages m
-        JOIN users u1 ON m.sender_id = u1.id
-        JOIN users u2 ON m.receiver_id = u2.id
-        WHERE m.receiver_id = #{userId} AND (m.deleted_by_receiver = 0 OR m.deleted_by_receiver IS NULL)
-        ORDER BY m.created_at DESC
-    </select>
-
-    <select id="getSentMessages" resultType="com.community.dto.response.MessageResponse">
-        SELECT 
-            m.id,
-            m.title,
-            m.content,
-            m.sender_id as senderId,
-            u1.nickname as senderName,
-            m.receiver_id as receiverId,
-            u2.nickname as receiverName,
-            m.is_read as isRead,
-            m.deleted_by_sender as deletedBySender,
-            m.deleted_by_receiver as deletedByReceiver,
-            m.created_at as createdAt,
-            m.read_at as readAt
-        FROM messages m
-        JOIN users u1 ON m.sender_id = u1.id
-        JOIN users u2 ON m.receiver_id = u2.id
-        WHERE m.sender_id = #{userId} AND (m.deleted_by_sender = 0 OR m.deleted_by_sender IS NULL)
-        ORDER BY m.created_at DESC
-    </select>
-
-    <select id="getMessageById" resultType="com.community.dto.response.MessageResponse">
-        SELECT 
-            m.id,
-            m.title,
-            m.content,
-            m.sender_id as senderId,
-            u1.nickname as senderName,
-            m.receiver_id as receiverId,
-            u2.nickname as receiverName,
-            m.is_read as isRead,
-            m.deleted_by_sender as deletedBySender,
-            m.deleted_by_receiver as deletedByReceiver,
-            m.created_at as createdAt,
-            m.read_at as readAt
-        FROM messages m
-        JOIN users u1 ON m.sender_id = u1.id
-        JOIN users u2 ON m.receiver_id = u2.id
-        WHERE m.id = #{id}
-    </select>
-
-    <insert id="createMessage" useGeneratedKeys="true" keyProperty="id" keyColumn="id">
-        <selectKey keyProperty="id" resultType="Long" order="BEFORE">
-            SELECT NVL(MAX(id),0)+1 FROM messages
-        </selectKey>
-        INSERT INTO messages (id, title, content, sender_id, receiver_id, is_read, deleted_by_sender, deleted_by_receiver, created_at)
-        VALUES (#{id}, #{request.title}, #{request.content}, #{senderId}, #{request.receiverId}, 0, 0, 0, SYSDATE)
-    </insert>
-
-    <update id="markAsRead">
-        UPDATE messages SET is_read = 1, read_at = SYSDATE WHERE id = #{id}
-    </update>
-
-    <update id="deleteByReceiver">
-        UPDATE messages SET deleted_by_receiver = 1 WHERE id = #{id}
-    </update>
-
-    <update id="deleteBySender">
-        UPDATE messages SET deleted_by_sender = 1 WHERE id = #{id}
     </update>
 
     <select id="findPostById" resultType="com.community.dto.response.PostResponse">
@@ -457,4 +417,24 @@
         ORDER BY created_at DESC
     </select>
 
+	<select id="findAllComments" resultType="com.community.suin.CommentResponse">
+        SELECT
+            c.id,
+            c.content,
+            c.author_id as authorId,
+            u.nickname as authorNickname,
+            u.role as authorRole,
+            c.post_id as postId,
+            c.parent_id as parentId,
+            c.created_at as createdAt,
+            c.updated_at as updatedAt
+        FROM comments c
+        JOIN users u ON c.author_id = u.id
+        ORDER BY c.created_at DESC
+        OFFSET #{offset} ROWS FETCH NEXT #{size} ROWS ONLY
+    </select>
+
+    <select id="getTotalCommentCount" resultType="int">
+        SELECT COUNT(*) FROM comments
+    </select>
 </mapper>

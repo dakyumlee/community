@@ -53,7 +53,19 @@ async function updateMessageNotificationBadge() {
         const user = Auth.getUser();
         if (!user) return;
         
-        const unreadCount = await MessageAPI.getUnreadCount();
+        const token = Auth.getToken();
+        if (!token) return;
+        
+        const response = await fetch('/api/posts/messages/unread-count', {
+            headers: {
+                'Authorization': 'Bearer ' + token
+            }
+        });
+        
+        if (!response.ok) return;
+        
+        const data = await response.json();
+        const unreadCount = data.count || 0;
         
         const badge = document.getElementById('message-notification-badge');
         if (badge) {

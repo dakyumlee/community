@@ -2,7 +2,11 @@ package com.community.controller;
 
 import oracle.sql.BLOB;
 import com.community.dto.response.PostResponse;
+import com.community.dto.response.UserResponse;
 import com.community.mapper.CommunityMapper;
+import com.community.hojun.MessagesMapper;
+import com.community.hojun.MessageDTO;
+import com.community.hojun.MessageResponse;
 import com.community.util.JwtUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
@@ -22,6 +26,9 @@ public class PostController {
 
     @Autowired
     private CommunityMapper mapper;
+    
+    @Autowired
+    private MessagesMapper messagesMapper;
     
     @Autowired
     private JwtUtil jwtUtil;
@@ -325,4 +332,121 @@ public class PostController {
             return ResponseEntity.status(500).body(Map.of("error", e.getMessage()));
         }
     }
+
+    @PostMapping("/messages")
+    public ResponseEntity<?> sendMessage(@RequestBody Map<String, Object> requestData, HttpServletRequest httpRequest) {
+        try {
+            Long userId = getUserIdFromRequest(httpRequest);
+            if (userId == null) {
+                return ResponseEntity.status(401).body(Map.of("error", "로그인이 필요합니다"));
+            }
+
+            UserResponse sender = mapper.findUserById(userId);
+            if (sender == null) {
+                return ResponseEntity.status(404).body(Map.of("error", "사용자를 찾을 수 없습니다"));
+            }
+
+            MessageDTO messageDTO = new MessageDTO();
+            messageDTO.setTitle((String) requestData.get("title"));
+            messageDTO.setContent((String) requestData.get("content"));
+            messageDTO.setSender_id(userId);
+            messageDTO.setReceiver_id(Long.valueOf(requestData.get("receiverId").toString()));
+            
+            messagesMapper.sendMessage(messageDTO);
+            
+            return ResponseEntity.ok(Map.of("success", true, "message", "쪽지가 전송되었습니다"));
+        } catch (Exception e) {
+            return ResponseEntity.status(500).body(Map.of("error", "쪽지 전송 중 오류가 발생했습니다"));
+        }
+    }
+
+    @GetMapping("/messages/received")
+    public ResponseEntity<List<MessageResponse>> getReceivedMessages(HttpServletRequest httpRequest) {
+        try {
+            Long userId = getUserIdFromRequest(httpRequest);
+            if (userId == null) {
+                return ResponseEntity.status(401).build();
+            }
+
+            List<MessageResponse> messages = messagesMapper.getReceiveMessageList(userId);
+            return ResponseEntity.ok(messages);
+        } catch (Exception e) {
+            return ResponseEntity.status(500).build();
+        }
+    }
+
+    @GetMapping("/messages/sent")
+    public ResponseEntity<List<MessageResponse>> getSentMessages(HttpServletRequest httpRequest) {
+        try {
+            Long userId = getUserIdFromRequest(httpRequest);
+            if (userId == null) {
+                return ResponseEntity.status(401).build();
+            }
+
+            List<MessageResponse> messages = messagesMapper.getSentMessageList(userId);
+            return ResponseEntity.ok(messages);
+        } catch (Exception e) {
+            return ResponseEntity.status(500).build();
+        }
+    }
+
+    @PutMapping("/messages/{id}/read")
+    public ResponseEntity<?> markMessageAsRead(@PathVariable Long id, HttpServletRequest httpRequest) {
+        try {
+            Long userId = getUserIdFromRequest(httpRequest);
+            if (userId == null) {
+                return ResponseEntity.status(401).body(Map.of("error", "로그인이 필요합니다"));
+            }
+
+            messagesMapper.updateIsRead(id);
+            return ResponseEntity.ok(Map.of("success", true, "message", "읽음 처리되었습니다"));
+        } catch (Exception e) {
+            return ResponseEntity.status(500).body(Map.of("error", "읽음 처리 중 오류가 발생했습니다"));
+        }
+    }
+
+    @DeleteMapping("/messages/{id}")
+    public ResponseEntity<?> deleteMessage(@PathVariable Long id, 
+                                          @RequestBody Map<String, String> request, 
+                                          HttpServletRequest httpRequest) {
+        try {
+            Long userId = getUserIdFromRequest(httpRequest);
+            if (userId == null) {
+                return ResponseEntity.status(401).body(Map.of("error", "로그인이 필요합니다"));
+            }
+
+            String deleteType = request.get("deleteType");
+            
+            if ("sender".equals(deleteType)) {
+                messagesMapper.senderDeleteMessage(id);
+            } else {
+                messagesMapper.receiverDeleteMessage(id);
+            }
+            
+            return ResponseEntity.ok(Map.of(
+                "success", true, 
+                "message", "쪽지가 삭제되었습니다",
+                "deletedId", id,
+                "deleteType", deleteType
+            ));
+        } catch (Exception e) {
+            return ResponseEntity.status(500).body(Map.of("error", "쪽지 삭제 중 오류가 발생했습니다"));
+        }
+    }
+    
+    @GetMapping("/messages/unread-count")
+    public ResponseEntity<?> getUnreadMessageCount(HttpServletRequest httpRequest) {
+        try {
+            Long userId = getUserIdFromRequest(httpRequest);
+            if (userId == null) {
+                return ResponseEntity.status(401).body(Map.of("error", "로그인이 필요합니다"));
+            }
+
+            int unreadCount = messagesMapper.getUnreadMessageCount(userId);
+            return ResponseEntity.ok(Map.of("count", unreadCount));
+        } catch (Exception e) {
+            return ResponseEntity.status(500).body(Map.of("error", "읽지 않은 쪽지 수 조회 중 오류가 발생했습니다"));
+        }
+    }
+    
 }

@@ -226,8 +226,18 @@ async function handleSubmit(event) {
 
         console.log('글 작성 요청 전송 중...');
 
+        const token = Auth.getToken();
+        if (!token) {
+            throw new Error('로그인 토큰이 없습니다. 다시 로그인해주세요.');
+        }
+
+        const headers = {
+            'Authorization': 'Bearer ' + token
+        };
+
         const response = await fetch('/api/posts', {
             method: 'POST',
+            headers: headers,
             body: formData,
             credentials: 'same-origin'
         });

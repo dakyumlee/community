@@ -3,3 +3,12 @@
 
 # Ignore Gradle build output directory
 build
+.DS_Store
+bin/
+target/
+build/
+out/
+logs/
+.idea/
+.vscode/
+node_modules/

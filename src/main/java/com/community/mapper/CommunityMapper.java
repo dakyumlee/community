@@ -28,6 +28,11 @@ public interface CommunityMapper {
     boolean updatePassword(@Param("id") Long id, @Param("newPassword") String newPassword);
     boolean existsByEmail(@Param("email") String email);
     
+    int getUserPostCount(@Param("userId") Long userId);
+    int getUserCommentCount(@Param("userId") Long userId);
+    int getUserLikeCount(@Param("userId") Long userId);
+    int getUserBookmarkCount(@Param("userId") Long userId);
+    
     List<Long> findBookmarkedPostIdsByUserId(@Param("userId") Long userId);
     boolean isBookmarked(@Param("userId") Long userId, @Param("postId") Long postId);
     boolean addBookmark(@Param("userId") Long userId, @Param("postId") Long postId);

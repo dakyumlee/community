@@ -40,6 +40,11 @@ function setupEventListeners() {
         likeBtn.addEventListener('click', handleToggleLike);
     }
     
+    const bookmarkBtn = document.getElementById('bookmark-btn');
+    if (bookmarkBtn) {
+        bookmarkBtn.addEventListener('click', handleToggleBookmark);
+    }
+    
     const commentForm = document.getElementById('comment-create-form');
     if (commentForm) {
         commentForm.addEventListener('submit', handleCreateComment);
@@ -269,6 +274,14 @@ function renderPostDetail(post) {
         likeBtn.className = post.isLiked ? 'like-btn liked' : 'like-btn';
         likeIcon.textContent = post.isLiked ? '❤️' : '🤍';
         likeCount.textContent = post.likeCount;
+    }
+
+    const bookmarkBtn = document.getElementById('bookmark-btn');
+    const bookmarkIcon = document.getElementById('bookmark-icon');
+    
+    if (bookmarkBtn && bookmarkIcon) {
+        bookmarkBtn.className = post.isBookmarked ? 'bookmark-btn bookmarked' : 'bookmark-btn';
+        bookmarkIcon.textContent = post.isBookmarked ? '🔖' : '📑';
     }
 }
 
@@ -560,6 +573,30 @@ async function handleToggleLike() {
         
     } catch (error) {
         console.error('좋아요 토글 실패:', error);
+        Auth.handleAuthError(error);
+    }
+}
+
+async function handleToggleBookmark() {
+    if (!Auth.requireAuth()) return;
+    
+    try {
+        const response = await PostAPI.toggleBookmark(postId);
+        
+        const bookmarkBtn = document.getElementById('bookmark-btn');
+        const bookmarkIcon = document.getElementById('bookmark-icon');
+        
+        if (bookmarkBtn && bookmarkIcon) {
+            bookmarkBtn.className = response.isBookmarked ? 'bookmark-btn bookmarked' : 'bookmark-btn';
+            bookmarkIcon.textContent = response.isBookmarked ? '🔖' : '📑';
+        }
+        
+        const message = response.isBookmarked ? '북마크에 추가되었습니다.' : '북마크에서 제거되었습니다.';
+        showNotification(message, 'success');
+        
+    } catch (error) {
+        console.error('북마크 토글 실패:', error);
+        showNotification('북마크 처리에 실패했습니다.', 'error');
         Auth.handleAuthError(error);
     }
 }

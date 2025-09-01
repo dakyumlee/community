@@ -50,14 +50,21 @@ public class PostController {
     public ResponseEntity<Map<String, Object>> getPosts(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size,
+            @RequestParam(required = false) Long authorId,
             HttpServletRequest request) {
         
         try {
             int offset = page * size;
+            List<PostResponse> posts;
+            int totalCount;
             
-            int totalCount = mapper.getTotalPostCount();
-            
-            List<PostResponse> posts = mapper.findAllPosts(offset, size);
+            if (authorId != null) {
+                posts = mapper.findPostsByAuthorId(authorId, offset, size);
+                totalCount = mapper.getPostCountByAuthorId(authorId);
+            } else {
+                posts = mapper.findAllPosts(offset, size);
+                totalCount = mapper.getTotalPostCount();
+            }
             
             int totalPages = (int) Math.ceil((double) totalCount / size);
             

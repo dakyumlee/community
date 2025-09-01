@@ -119,8 +119,7 @@ function initProfileForm() {
                 department: formData.get('department'),
                 jobPosition: formData.get('jobPosition'),
                 nickname: formData.get('nickname'),
-                company: formData.get('company'),
-                userId: currentUser.id
+                company: formData.get('company')
             };
 
             try {
@@ -158,8 +157,7 @@ function initPasswordForm() {
 
             try {
                 await APIClient.put(`/users/${currentUser.id}/password`, null, {
-                    newPassword: newPassword,
-                    userId: currentUser.id
+                    newPassword: newPassword
                 });
                 
                 showSuccess('비밀번호가 변경되었습니다.');
@@ -176,7 +174,7 @@ async function loadMyPosts() {
     try {
         if (!currentUser) return;
         
-        const response = await APIClient.get(`/user/posts?userId=${currentUser.id}&page=0&size=20`);
+        const response = await APIClient.get(`/posts?authorId=${currentUser.id}&page=0&size=20`);
         displayMyPosts(response.posts);
     } catch (error) {
         console.error('내 게시글 로드 실패:', error);
@@ -197,7 +195,7 @@ function displayMyPosts(posts) {
     }
 
     container.innerHTML = posts.map(post => `
-        <div class="my-post-card" onclick="location.href='/post-detail.html?id=${post.id}'">
+        <div class="my-post-card" onclick="location.href='/posts/detail?id=${post.id}'">
             <div class="post-title">${post.title}</div>
             <div class="post-meta">
                 <span class="post-date">${formatDate(post.createdAt)}</span>
@@ -215,14 +213,15 @@ async function loadUserStats() {
     try {
         if (!currentUser) return;
         
-        const response = await APIClient.get(`/user/stats?userId=${currentUser.id}`);
+        const response = await APIClient.get(`/users/${currentUser.id}/stats`);
         displayUserStats(response);
     } catch (error) {
         console.error('사용자 통계 로드 실패:', error);
         displayUserStats({
             postCount: 0,
             commentCount: 0,
-            likeCount: 0
+            likeCount: 0,
+            bookmarkCount: 0
         });
     }
 }
@@ -231,10 +230,12 @@ function displayUserStats(stats) {
     const totalPostsElement = document.getElementById('total-posts');
     const totalCommentsElement = document.getElementById('total-comments');
     const totalLikesElement = document.getElementById('total-likes');
+    const totalBookmarksElement = document.getElementById('total-bookmarks');
     
     if (totalPostsElement) totalPostsElement.textContent = stats.postCount || 0;
     if (totalCommentsElement) totalCommentsElement.textContent = stats.commentCount || 0;
     if (totalLikesElement) totalLikesElement.textContent = stats.likeCount || 0;
+    if (totalBookmarksElement) totalBookmarksElement.textContent = stats.bookmarkCount || 0;
 }
 
 async function loadMessages() {
@@ -262,71 +263,6 @@ async function loadSentMessages() {
     } catch (error) {
         console.error('보낸 쪽지 로드 실패:', error);
         showError('보낸 쪽지를 불러오는 중 오류가 발생했습니다.');
-    }
-}
-
-async function deleteMessage(messageId, deleteType) {
-    if (!confirm('정말 삭제하시겠습니까?')) {
-        return;
-    }
-
-    const messageCard = document.querySelector(`[data-id="${messageId}"]`);
-    
-    try {
-        const token = Auth.getToken();
-        if (!token) {
-            showError('로그인이 필요합니다.');
-            return;
-        }
-
-        const response = await fetch(`/api/posts/messages/${messageId}`, {
-            method: 'DELETE',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': 'Bearer ' + token
-            },
-            body: JSON.stringify({ deleteType: deleteType })
-        });
-
-        if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-        }
-        
-        const result = await response.json();
-        
-        if (result.success) {
-            if (messageCard) {
-                messageCard.style.opacity = '0.5';
-                messageCard.style.pointerEvents = 'none';
-                setTimeout(() => {
-                    messageCard.remove();
-                }, 200);
-            }
-            
-            showSuccess('쪽지가 삭제되었습니다.');
-            
-            const currentTab = document.querySelector('.message-tab-btn.active');
-            if (currentTab) {
-                const tabType = currentTab.dataset.messageTab;
-                setTimeout(() => {
-                    if (tabType === 'received') {
-                        loadMessages();
-                    } else {
-                        loadSentMessages();
-                    }
-                }, 500);
-            }
-        } else {
-            showError(result.message || '쪽지 삭제에 실패했습니다.');
-        }
-    } catch (error) {
-        console.error('쪽지 삭제 실패:', error);
-        showError('쪽지 삭제 중 오류가 발생했습니다.');
-        
-        if (messageCard) {
-            messageCard.style.opacity = '1';
-            messageCard.style.pointerEvents = 'auto';
-        }
     }
 }
 
@@ -421,7 +357,7 @@ async function deleteMessage(messageId, deleteType) {
             showSuccess('쪽지가 삭제되었습니다.');
             
             setTimeout(() => {
-                if (deleteType === 'received') {
+                if (deleteType === 'receiver') {
                     loadMessages();
                 } else {
                     loadSentMessages();

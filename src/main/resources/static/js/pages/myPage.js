@@ -432,12 +432,10 @@ async function loadModalMessages() {
                 const isUnread = titleCell.classList.contains('unread');
                 const messageId = titleCell.querySelector('a') ? titleCell.querySelector('a').getAttribute('href').split('id=')[1] : '';
                 
-                const personLabel = currentMessageTab === 'received' ? '보낸 사람' : '받는 사람';
-                
                 messagesHTML += `
                     <div class="modal-message-card ${isUnread ? 'unread' : ''}" onclick="openMessageDetailModal('${messageId}')">
                         <div class="modal-message-meta">
-                            <strong>${personLabel}: ${personName}</strong>
+                            <strong>${currentMessageTab === 'received' ? '보낸 사람' : '받는 사람'}: ${personName}</strong>
                             <span class="modal-message-date">${date}</span>
                         </div>
                         <div class="modal-message-content">${title}</div>

@@ -155,7 +155,13 @@ async function handleSendMessage() {
 
         if (typeof MessageAPI !== 'undefined') {
             await MessageAPI.sendMessage(selectedMessageRecipient.id, content);
-            alert('쪽지가 전송되었습니다.');
+            
+            if (typeof NotificationSettings !== 'undefined' && NotificationSettings.isMessageNotificationEnabled()) {
+                showNotification('쪽지가 전송되었습니다.', 'message');
+            } else {
+                alert('쪽지가 전송되었습니다.');
+            }
+            
             handleCloseMessageModal();
         } else {
             alert('MessageAPI가 로드되지 않았습니다.');
@@ -508,7 +514,11 @@ async function handleReplySubmit(e, parentId) {
             parentId: parentId
         });
         
-        showNotification('답글이 작성되었습니다.', 'success');
+        if (typeof NotificationSettings !== 'undefined' && NotificationSettings.isCommentNotificationEnabled()) {
+            showNotification('답글이 작성되었습니다.', 'comment');
+        } else {
+            showNotification('답글이 작성되었습니다.', 'success');
+        }
         
         hideReplyForm(parentId);
         loadComments();
@@ -575,7 +585,11 @@ async function handleCreateComment(e) {
         
         await CommentAPI.createComment(postId, { content });
         
-        showNotification('댓글이 작성되었습니다.', 'success');
+        if (typeof NotificationSettings !== 'undefined' && NotificationSettings.isCommentNotificationEnabled()) {
+            showNotification('댓글이 작성되었습니다.', 'comment');
+        } else {
+            showNotification('댓글이 작성되었습니다.', 'success');
+        }
         
         form.reset();
         removeInputError(contentTextarea);
@@ -688,7 +702,10 @@ function showNotification(message, type = 'info') {
         animation: slideIn 0.3s ease;
         box-shadow: 0 4px 12px rgba(0,0,0,0.15);
         max-width: 300px;
-        background-color: ${type === 'success' ? '#28a745' : type === 'error' ? '#dc3545' : '#007bff'};
+        background-color: ${type === 'success' ? '#28a745' : 
+                          type === 'error' ? '#dc3545' : 
+                          type === 'comment' ? '#17a2b8' :
+                          type === 'message' ? '#6f42c1' : '#007bff'};
     `;
     notification.textContent = message;
     

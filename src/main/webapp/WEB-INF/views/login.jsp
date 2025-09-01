@@ -55,7 +55,6 @@
 			</div>
 		</div>
 	</main>
-
 	<script src="/static/js/utils/constants.js"></script>
 	<script src="/static/js/utils/helpers.js"></script>
 	<script src="/static/js/utils/validation.js"></script>

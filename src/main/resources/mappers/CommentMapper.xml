@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
-"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 
 <mapper namespace="com.community.suin.CommentMapper">
 
@@ -23,7 +23,7 @@
 
     <insert id="insertComment">
         <selectKey keyProperty="id" resultType="Long" order="BEFORE">
-            SELECT comments_seq.NEXTVAL FROM DUAL
+            SELECT NVL(MAX(id),0)+1 FROM comments
         </selectKey>
         INSERT INTO comments (id, content, post_id, author_id, parent_id, created_at, updated_at)
         VALUES (#{id}, #{content}, #{postId}, #{userId}, #{parentId, jdbcType=BIGINT}, SYSDATE, SYSDATE)

@@ -152,11 +152,12 @@
             border: 1px solid #e0e0e0;
         }
     </style>
-
+	
     <script src="/static/js/utils/constants.js?v=001"></script>
     <script src="/static/js/utils/helpers.js?v=001"></script>
     <script src="/static/js/utils/validation.js?v=001"></script>
     <script src="/static/js/utils/auth.js?v=001"></script>
+    <script src="/static/js/utils/notifications.js"></script>
     <script src="/static/js/api/apiClient.js?v=001"></script>
     <script src="/static/js/api/authAPI.js?v=001"></script>
     <script src="/static/js/api/postAPI.js?v=001"></script>

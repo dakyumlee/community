@@ -560,11 +560,11 @@
             </div>
         </div>
     </div>
-
     <script src="/static/js/utils/constants.js?v=<%= System.currentTimeMillis() %>"></script>
     <script src="/static/js/utils/helpers.js?v=<%= System.currentTimeMillis() %>"></script>
     <script src="/static/js/utils/validation.js?v=<%= System.currentTimeMillis() %>"></script>
     <script src="/static/js/utils/auth.js?v=<%= System.currentTimeMillis() %>"></script>
+    <script src="/static/js/utils/notifications.js"></script>
     <script src="/static/js/api/apiClient.js?v=<%= System.currentTimeMillis() %>"></script>
     <script src="/static/js/api/messageAPI.js?v=<%= System.currentTimeMillis() %>"></script>
     <script src="/static/js/api/authAPI.js?v=<%= System.currentTimeMillis() %>"></script>

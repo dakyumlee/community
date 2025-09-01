@@ -472,6 +472,7 @@
     <script src="/static/js/utils/constants.js"></script>
     <script src="/static/js/utils/helpers.js"></script>
     <script src="/static/js/utils/auth.js"></script>
+	<script src="/static/js/utils/notifications.js"></script>
     <script src="/static/js/api/apiClient.js"></script>
     <script src="/static/js/components/header.js"></script>
     <script src="/static/js/pages/admin.js"></script>

@@ -43,8 +43,6 @@ class MessageAPI {
             console.log('성공 응답:', result);
 
             if (result.success) {
-                alert('쪽지가 전송되었습니다.');
-
                 if (typeof loadSentMessages === 'function') {
                     console.log('보낸쪽지함 새로고침 중...');
                     setTimeout(() => {
@@ -60,16 +58,14 @@ class MessageAPI {
                         }
                     }, 500);
                 }
-
             } else {
-                alert('쪽지 전송에 실패했습니다: ' + (result.message || '알 수 없는 오류'));
+                throw new Error(result.message || '알 수 없는 오류');
             }
 
             return result;
 
         } catch (error) {
             console.error('쪽지 전송 실패:', error);
-            alert('쪽지 전송에 실패했습니다: ' + error.message);
             throw error;
         }
     }

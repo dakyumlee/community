@@ -1,11 +1,14 @@
 let currentUser = null;
+let currentUserId = null;
+let currentMessageTab = 'received';
+let allUsers = [];
 
 document.addEventListener('DOMContentLoaded', function() {
     loadUserProfile();
     initTabNavigation();
     initProfileForm();
     initPasswordForm();
-    initMessageTabNavigation();
+    initMessageModalEvents();
 });
 
 async function loadUserProfile() {
@@ -16,11 +19,11 @@ async function loadUserProfile() {
             return;
         }
         
+        currentUserId = currentUser.id;
         displayUserProfile(currentUser);
         showProfileContainer();
         loadMyPosts();
-        loadUserStats();
-        loadMessages();
+        await loadAllUsers();
     } catch (error) {
         console.error('사용자 정보 로드 실패:', error);
         showError('사용자 정보를 불러오는 중 오류가 발생했습니다.');
@@ -62,6 +65,11 @@ function initTabNavigation() {
         button.addEventListener('click', function() {
             const tabName = this.dataset.tab;
             
+            if (tabName === 'messages') {
+                openMessageModal();
+                return;
+            }
+            
             tabButtons.forEach(btn => btn.classList.remove('active'));
             tabPanes.forEach(pane => pane.classList.remove('active'));
             
@@ -73,8 +81,6 @@ function initTabNavigation() {
 
             if (tabName === 'posts') {
                 loadMyPosts();
-            } else if (tabName === 'messages') {
-                loadMessages();
             } else if (tabName === 'stats') {
                 loadUserStats();
             }
@@ -82,30 +88,38 @@ function initTabNavigation() {
     });
 }
 
-function initMessageTabNavigation() {
-    document.querySelectorAll('.message-tab-btn').forEach(btn => {
+function initMessageModalEvents() {
+    const tabBtns = document.querySelectorAll('.modal-message-tab-btn');
+    tabBtns.forEach(btn => {
         btn.addEventListener('click', function() {
-            document.querySelectorAll('.message-tab-btn').forEach(b => b.classList.remove('active'));
-            this.classList.add('active');
+            const tab = this.getAttribute('data-tab');
+            switchModalMessageTab(tab);
+        });
+    });
 
-            const tabType = this.dataset.messageTab;
-            
-            const receivedContainer = document.getElementById('received-messages');
-            const sentContainer = document.getElementById('sent-messages');
-            
-            if (receivedContainer && sentContainer) {
-                if (tabType === 'received') {
-                    receivedContainer.classList.remove('hidden');
-                    sentContainer.classList.add('hidden');
-                    loadMessages();
-                } else if (tabType === 'sent') {
-                    receivedContainer.classList.add('hidden');
-                    sentContainer.classList.remove('hidden');
-                    loadSentMessages();
-                }
+    document.querySelectorAll('.modal-overlay').forEach(modal => {
+        modal.addEventListener('click', function(e) {
+            if (e.target === this) {
+                this.classList.remove('active');
             }
         });
     });
+
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+            document.querySelectorAll('.modal-overlay.active').forEach(modal => {
+                modal.classList.remove('active');
+            });
+        }
+    });
+
+    const composeForm = document.getElementById('composeForm');
+    if (composeForm) {
+        composeForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            sendModalMessage();
+        });
+    }
 }
 
 function initProfileForm() {
@@ -124,7 +138,6 @@ function initProfileForm() {
 
             try {
                 const response = await APIClient.put(`/users/${currentUser.id}`, null, profileData);
-                
                 showSuccess('프로필이 업데이트되었습니다.');
                 await loadUserProfile();
             } catch (error) {
@@ -211,178 +224,353 @@ function displayMyPosts(posts) {
 
 async function loadUserStats() {
     try {
-        if (!currentUser) return;
+        if (!currentUser || !currentUser.id) {
+            return;
+        }
         
         const response = await APIClient.get(`/users/${currentUser.id}/stats`);
-        displayUserStats(response);
+        
+        const totalPostsElement = document.getElementById('total-posts');
+        const totalCommentsElement = document.getElementById('total-comments');
+        const totalLikesElement = document.getElementById('total-likes');
+        
+        if (totalPostsElement) totalPostsElement.textContent = response.postCount || 0;
+        if (totalCommentsElement) totalCommentsElement.textContent = response.commentCount || 0;
+        if (totalLikesElement) totalLikesElement.textContent = response.likeCount || 0;
+        
     } catch (error) {
-        console.error('사용자 통계 로드 실패:', error);
-        displayUserStats({
-            postCount: 0,
-            commentCount: 0,
-            likeCount: 0,
-            bookmarkCount: 0
-        });
+        console.error('통계 로딩 오류:', error);
+        if (document.getElementById('total-posts')) document.getElementById('total-posts').textContent = '오류';
+        if (document.getElementById('total-comments')) document.getElementById('total-comments').textContent = '오류';
+        if (document.getElementById('total-likes')) document.getElementById('total-likes').textContent = '오류';
     }
 }
 
-function displayUserStats(stats) {
-    const totalPostsElement = document.getElementById('total-posts');
-    const totalCommentsElement = document.getElementById('total-comments');
-    const totalLikesElement = document.getElementById('total-likes');
-    const totalBookmarksElement = document.getElementById('total-bookmarks');
+async function loadAllUsers() {
+    try {
+        const response = await APIClient.get('/users');
+        allUsers = response.filter(user => user.id !== currentUserId);
+        return allUsers;
+    } catch (error) {
+        console.error('사용자 목록 로드 실패:', error);
+        return [];
+    }
+}
+
+function openMessageModal() {
+    const modal = document.getElementById('messageModal');
+    if (modal) {
+        modal.classList.add('active');
+        loadModalMessages();
+    }
+}
+
+function closeMessageModal() {
+    const modal = document.getElementById('messageModal');
+    if (modal) {
+        modal.classList.remove('active');
+    }
+}
+
+function openMessageDetailModal(messageId) {
+    loadMessageDetail(messageId);
+    const modal = document.getElementById('messageDetailModal');
+    if (modal) {
+        modal.classList.add('active');
+    }
+}
+
+function closeMessageDetailModal() {
+    const modal = document.getElementById('messageDetailModal');
+    if (modal) {
+        modal.classList.remove('active');
+    }
+}
+
+function openComposeModal() {
+    const modal = document.getElementById('composeModal');
+    const receiverContainer = document.getElementById('receiverContainer');
     
-    if (totalPostsElement) totalPostsElement.textContent = stats.postCount || 0;
-    if (totalCommentsElement) totalCommentsElement.textContent = stats.commentCount || 0;
-    if (totalLikesElement) totalLikesElement.textContent = stats.likeCount || 0;
-    if (totalBookmarksElement) totalBookmarksElement.textContent = stats.bookmarkCount || 0;
+    if (receiverContainer) {
+        createUserDropdown();
+    }
+    
+    const titleInput = document.getElementById('messageTitle');
+    const contentInput = document.getElementById('messageContent');
+    if (titleInput) titleInput.value = '';
+    if (contentInput) contentInput.value = '';
+    
+    if (modal) modal.classList.add('active');
 }
 
-async function loadMessages() {
-    try {
-        const user = await AuthAPI.getCurrentUser();
-        if (!user) {
-            showError('사용자 정보를 찾을 수 없습니다.');
-            return;
-        }
+function openReplyModal(senderNickname, originalTitle) {
+    const modal = document.getElementById('composeModal');
+    
+    const receiverContainer = document.getElementById('receiverContainer');
+    if (receiverContainer) {
+        receiverContainer.innerHTML = `
+            <label>받는 사람 (답장)</label>
+            <div style="display: flex; align-items: center; gap: 10px; background: #e8f5e8; padding: 8px; border-radius: 4px;">
+                <strong style="color: #28a745;">${senderNickname}</strong>
+                <span style="color: #666; font-size: 12px;">답장 대상 고정됨</span>
+            </div>
+            <input type="hidden" id="receiverNickname" value="${senderNickname}">
+        `;
+    }
+    
+    const titleInput = document.getElementById('messageTitle');
+    if (titleInput) {
+        const replyTitle = originalTitle.startsWith('Re: ') ? originalTitle : `Re: ${originalTitle}`;
+        titleInput.value = replyTitle;
+    }
+    
+    const contentInput = document.getElementById('messageContent');
+    if (contentInput) {
+        contentInput.value = '';
+        contentInput.focus();
+    }
+    
+    if (modal) modal.classList.add('active');
+}
 
-        const receivedMessages = await APIClient.get('/posts/messages/received');
-        displayMessages(receivedMessages, 'received');
-        updateUnreadCount(receivedMessages);
+function createUserDropdown() {
+    const receiverContainer = document.getElementById('receiverContainer');
+    if (!receiverContainer || allUsers.length === 0) return;
+    
+    const options = allUsers.map(user => 
+        `<option value="${user.nickname}">${user.nickname} (${user.department || '부서없음'})</option>`
+    ).join('');
+    
+    receiverContainer.innerHTML = `
+        <label for="receiverSelect">받는 사람</label>
+        <select id="receiverSelect" class="form-control-modal" onchange="selectReceiver()">
+            <option value="">받는 사람을 선택하세요</option>
+            ${options}
+        </select>
+        <input type="hidden" id="receiverNickname" value="">
+    `;
+}
 
-    } catch (error) {
-        console.error('쪽지 로드 실패:', error);
-        showError('쪽지를 불러오는 중 오류가 발생했습니다.');
+function selectReceiver() {
+    const select = document.getElementById('receiverSelect');
+    const hidden = document.getElementById('receiverNickname');
+    
+    if (select && hidden) {
+        hidden.value = select.value;
     }
 }
 
-async function loadSentMessages() {
-    try {
-        const sentMessages = await APIClient.get('/posts/messages/sent');
-        displayMessages(sentMessages, 'sent');
-    } catch (error) {
-        console.error('보낸 쪽지 로드 실패:', error);
-        showError('보낸 쪽지를 불러오는 중 오류가 발생했습니다.');
+function closeComposeModal() {
+    const modal = document.getElementById('composeModal');
+    if (modal) {
+        modal.classList.remove('active');
     }
+    
+    const titleInput = document.getElementById('messageTitle');
+    const contentInput = document.getElementById('messageContent');
+    if (titleInput) titleInput.value = '';
+    if (contentInput) contentInput.value = '';
 }
 
-function displayMessages(messages, type) {
-    const container = document.getElementById(type === 'received' ? 'received-messages' : 'sent-messages');
+function switchModalMessageTab(tab) {
+    currentMessageTab = tab;
+    
+    document.querySelectorAll('.modal-message-tab-btn').forEach(btn => {
+        btn.classList.remove('active');
+    });
+    
+    const activeBtn = document.querySelector(`.modal-message-tab-btn[data-tab="${tab}"]`);
+    if (activeBtn) activeBtn.classList.add('active');
+    
+    const receivedContainer = document.getElementById('modal-received-messages');
+    const sentContainer = document.getElementById('modal-sent-messages');
+    
+    if (receivedContainer && sentContainer) {
+        receivedContainer.style.display = tab === 'received' ? 'block' : 'none';
+        sentContainer.style.display = tab === 'sent' ? 'block' : 'none';
+    }
+    
+    loadModalMessages();
+}
+
+async function loadModalMessages() {
+    const container = document.getElementById(currentMessageTab === 'received' ? 'modal-received-messages' : 'modal-sent-messages');
     if (!container) return;
     
-    if (!messages || messages.length === 0) {
-        container.innerHTML = '<div class="no-messages">쪽지가 없습니다.</div>';
-        return;
-    }
-
-    container.innerHTML = messages.map(message => `
-        <div class="message-card ${message.isRead === 0 ? 'unread' : ''}" data-id="${message.id}">
-            <div class="message-meta">
-                <strong>${type === 'received' ? message.senderName : message.receiverName}</strong>
-                <span class="message-date">${formatDate(message.createdAt)}</span>
-                ${message.isRead === 0 && type === 'received' ? '<span class="unread-badge">NEW</span>' : ''}
-            </div>
-            <div class="message-content">${message.title}</div>
-            <div class="message-preview">${truncateText(message.content, 50)}</div>
-            <div class="message-actions">
-                <button class="btn btn-sm btn-outline-primary view-message-btn" data-id="${message.id}">읽기</button>
-                <button class="btn btn-sm btn-outline-danger delete-message-btn" 
-                        data-id="${message.id}" 
-                        data-type="${type === 'received' ? 'receiver' : 'sender'}">삭제</button>
-            </div>
-        </div>
-    `).join('');
-
-    container.querySelectorAll('.view-message-btn').forEach(btn => {
-        btn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            const messageId = e.target.dataset.id;
-            viewMessageDetail(messageId);
-        });
-    });
-
-    container.querySelectorAll('.delete-message-btn').forEach(btn => {
-        btn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            const messageId = e.target.dataset.id;
-            const deleteType = e.target.dataset.type;
-            deleteMessage(messageId, deleteType);
-        });
-    });
-}
-
-async function viewMessageDetail(messageId) {
+    container.innerHTML = '<div class="loading-modal">쪽지를 불러오는 중...</div>';
+    
     try {
-        await APIClient.put(`/posts/messages/${messageId}/read`);
-        window.location.href = `/Message/View?id=${messageId}`;
-    } catch (error) {
-        console.error('쪽지 읽기 실패:', error);
-        showError('쪽지를 읽는 중 오류가 발생했습니다.');
-    }
-}
-
-async function deleteMessage(messageId, deleteType) {
-    if (!confirm('정말 삭제하시겠습니까?')) {
-        return;
-    }
-
-    try {
-        const token = Auth.getToken();
-        if (!token) {
-            showError('로그인이 필요합니다.');
+        const url = currentMessageTab === 'received' 
+            ? `/Message/List/Received?userId=${currentUserId}` 
+            : `/Message/List/Sent?userId=${currentUserId}`;
+        
+        const response = await fetch(url);
+        const html = await response.text();
+        
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(html, 'text/html');
+        const rows = doc.querySelectorAll('tbody tr');
+        
+        if (rows.length === 0 || (rows.length === 1 && rows[0].querySelector('td[colspan]'))) {
+            container.innerHTML = `
+                <div class="empty-state-modal">
+                    <h4>쪽지가 없습니다</h4>
+                    <p>${currentMessageTab === 'received' ? '받은' : '보낸'} 쪽지가 없습니다.</p>
+                </div>
+            `;
             return;
         }
-
-        const response = await fetch(`/api/posts/messages/${messageId}`, {
-            method: 'DELETE',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': 'Bearer ' + token
-            },
-            body: JSON.stringify({ deleteType: deleteType })
-        });
-
-        if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-        }
         
-        const result = await response.json();
-        
-        if (result.success) {
-            const messageCard = document.querySelector(`[data-id="${messageId}"]`);
-            if (messageCard) {
-                messageCard.remove();
+        let messagesHTML = '';
+        rows.forEach(row => {
+            const cells = row.querySelectorAll('td');
+            if (cells.length >= 4) {
+                const personName = cells[0].textContent.trim();
+                const titleCell = cells[1];
+                const title = titleCell.querySelector('a') ? titleCell.querySelector('a').textContent.trim() : titleCell.textContent.trim();
+                const date = cells[2].textContent.trim();
+                const isUnread = titleCell.classList.contains('unread');
+                const messageId = titleCell.querySelector('a') ? titleCell.querySelector('a').getAttribute('href').split('id=')[1] : '';
+                
+                const personLabel = currentMessageTab === 'received' ? '보낸 사람' : '받는 사람';
+                
+                messagesHTML += `
+                    <div class="modal-message-card ${isUnread ? 'unread' : ''}" onclick="openMessageDetailModal('${messageId}')">
+                        <div class="modal-message-meta">
+                            <strong>${personLabel}: ${personName}</strong>
+                            <span class="modal-message-date">${date}</span>
+                        </div>
+                        <div class="modal-message-content">${title}</div>
+                        <div class="modal-message-actions">
+                            ${currentMessageTab === 'received' ? 
+                                `<button class="btn btn-sm btn-primary" onclick="event.stopPropagation(); openReplyModal('${personName}', '${title}')">답장</button>` :
+                                `<button class="btn btn-sm btn-secondary" onclick="event.stopPropagation(); openComposeModal()">재전송</button>`
+                            }
+                            <button class="btn btn-sm btn-danger" onclick="event.stopPropagation(); deleteModalMessage('${messageId}')">삭제</button>
+                        </div>
+                    </div>
+                `;
             }
-            
-            showSuccess('쪽지가 삭제되었습니다.');
-            
-            setTimeout(() => {
-                if (deleteType === 'receiver') {
-                    loadMessages();
-                } else {
-                    loadSentMessages();
-                }
-            }, 300);
-        } else {
-            showError(result.message || '쪽지 삭제에 실패했습니다.');
-        }
+        });
+        
+        container.innerHTML = messagesHTML;
+        
     } catch (error) {
-        console.error('쪽지 삭제 실패:', error);
-        showError('쪽지 삭제 중 오류가 발생했습니다.');
+        console.error('메시지 로딩 오류:', error);
+        container.innerHTML = `
+            <div class="empty-state-modal">
+                <h4>오류가 발생했습니다</h4>
+                <p>쪽지를 불러오는 중 문제가 발생했습니다.</p>
+                <button class="btn btn-primary" onclick="loadModalMessages()">다시 시도</button>
+            </div>
+        `;
     }
 }
 
-function updateUnreadCount(messages) {
-    const badge = document.getElementById('message-tab-badge');
-    if (!badge) return;
+async function loadMessageDetail(messageId) {
+    const container = document.getElementById('messageDetailContent');
+    if (!container) return;
     
-    const unreadCount = messages.filter(msg => msg.isRead === 0).length;
+    container.innerHTML = '<div class="loading-modal">쪽지를 불러오는 중...</div>';
     
-    if (unreadCount > 0) {
-        badge.textContent = unreadCount;
-        badge.classList.remove('hidden');
-    } else {
-        badge.classList.add('hidden');
+    try {
+        const response = await fetch(`/Message/View?id=${messageId}`);
+        const html = await response.text();
+        
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(html, 'text/html');
+        const msgInfo = doc.querySelector('.msg-info');
+        const msgContent = doc.querySelector('.msg-content');
+        
+        if (msgInfo && msgContent) {
+            const sender = msgInfo.querySelector('p:nth-child(1)').textContent.replace('보낸 사람:', '').trim();
+            const title = msgInfo.querySelector('p:nth-child(3)').textContent.replace('제목:', '').trim();
+            const date = msgInfo.querySelector('p:nth-child(4)').textContent.replace('보낸 날짜:', '').trim();
+            const content = msgContent.innerHTML;
+            
+            container.innerHTML = `
+                <div class="message-detail-header">
+                    <h4>${title}</h4>
+                    <div class="message-detail-info">
+                        <span>보낸 사람: ${sender}</span>
+                        <span>${date}</span>
+                    </div>
+                </div>
+                <div class="message-detail-content">
+                    ${content}
+                </div>
+                <div class="message-detail-actions">
+                    <button class="btn btn-outline" onclick="closeMessageDetailModal()">닫기</button>
+                    <button class="btn btn-primary" onclick="openReplyModal('${sender}', '${title}'); closeMessageDetailModal();">답장</button>
+                </div>
+            `;
+        } else {
+            throw new Error('메시지 내용을 찾을 수 없습니다.');
+        }
+        
+    } catch (error) {
+        console.error('메시지 상세 로딩 오류:', error);
+        container.innerHTML = `
+            <div class="empty-state-modal">
+                <h4>오류가 발생했습니다</h4>
+                <p>쪽지를 불러오는 중 문제가 발생했습니다.</p>
+                <button class="btn btn-primary" onclick="closeMessageDetailModal()">닫기</button>
+            </div>
+        `;
+    }
+}
+
+async function sendModalMessage() {
+    const receiverNickname = document.getElementById('receiverNickname').value.trim();
+    const title = document.getElementById('messageTitle').value.trim();
+    const content = document.getElementById('messageContent').value.trim();
+    
+    if (!receiverNickname || !title || !content) {
+        alert('모든 필드를 입력해주세요.');
+        return;
+    }
+    
+    try {
+        const formData = new FormData();
+        formData.append('sender_id', currentUserId);
+        formData.append('receiver_nickname', receiverNickname);
+        formData.append('title', title);
+        formData.append('content', content);
+        
+        const response = await fetch('/Message/Send', {
+            method: 'POST',
+            body: formData
+        });
+        
+        if (response.ok) {
+            alert('쪽지가 전송되었습니다.');
+            closeComposeModal();
+            loadModalMessages();
+        } else {
+            throw new Error(`서버 오류: ${response.status}`);
+        }
+        
+    } catch (error) {
+        console.error('쪽지 전송 오류:', error);
+        alert('쪽지 전송 중 오류가 발생했습니다: ' + error.message);
+    }
+}
+
+async function deleteModalMessage(messageId) {
+    if (!confirm('이 쪽지를 삭제하시겠습니까?')) {
+        return;
+    }
+    
+    try {
+        const response = await fetch(`/Message/ReceiverDelete?id=${messageId}`);
+        if (response.ok) {
+            loadModalMessages();
+        } else {
+            throw new Error('삭제 실패');
+        }
+    } catch (error) {
+        console.error('쪽지 삭제 오류:', error);
+        alert('쪽지 삭제 중 오류가 발생했습니다.');
     }
 }
 

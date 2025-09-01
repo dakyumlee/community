@@ -32,6 +32,7 @@ public interface CommunityMapper {
     int getUserCommentCount(@Param("userId") Long userId);
     int getUserLikeCount(@Param("userId") Long userId);
     int getUserBookmarkCount(@Param("userId") Long userId);
+    int getUserReceivedLikes(@Param("userId") Long userId);
     
     List<Long> findBookmarkedPostIdsByUserId(@Param("userId") Long userId);
     boolean isBookmarked(@Param("userId") Long userId, @Param("postId") Long postId);

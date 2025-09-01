@@ -417,7 +417,7 @@
         ORDER BY created_at DESC
     </select>
 
-	<select id="findAllComments" resultType="com.community.suin.CommentResponse">
+    <select id="findAllComments" resultType="com.community.suin.CommentResponse">
         SELECT
             c.id,
             c.content,
@@ -437,4 +437,20 @@
     <select id="getTotalCommentCount" resultType="int">
         SELECT COUNT(*) FROM comments
     </select>
+    
+    <select id="getUserReceivedLikes" parameterType="Long" resultType="int">
+        SELECT COUNT(*) 
+        FROM likes l 
+        JOIN posts p ON l.post_id = p.id 
+        WHERE p.author_id = #{userId}
+    </select>
+
+    <select id="getUserCommentCount" parameterType="Long" resultType="int">
+        SELECT COUNT(*) FROM comments WHERE author_id = #{userId}
+    </select>
+
+    <select id="getUserPostCount" parameterType="Long" resultType="int">
+        SELECT COUNT(*) FROM posts WHERE author_id = #{userId}
+    </select>
+
 </mapper>

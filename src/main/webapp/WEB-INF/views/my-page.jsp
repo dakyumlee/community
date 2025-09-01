@@ -143,129 +143,6 @@
             color: #007bff;
         }
         
-        .message-tabs {
-            display: flex;
-            border-bottom: 1px solid #e0e0e0;
-            margin-bottom: 20px;
-            background: white;
-            border-radius: 8px 8px 0 0;
-            overflow: hidden;
-        }
-        
-        .message-tab-btn {
-            flex: 1;
-            padding: 15px 20px;
-            border: none;
-            background: #f8f9fa;
-            color: #6c757d;
-            cursor: pointer;
-            font-weight: 500;
-            transition: all 0.2s ease;
-            position: relative;
-        }
-        
-        .message-tab-btn:hover {
-            background: #e9ecef;
-            color: #495057;
-        }
-        
-        .message-tab-btn.active {
-            background: white;
-            color: #007bff;
-            font-weight: 600;
-        }
-        
-        .message-tab-btn.active::after {
-            content: '';
-            position: absolute;
-            bottom: 0;
-            left: 0;
-            right: 0;
-            height: 2px;
-            background: #007bff;
-        }
-        
-        .message-list {
-            background: white;
-            border-radius: 0 0 8px 8px;
-            padding: 20px;
-            min-height: 300px;
-        }
-        
-        .message-card {
-            background: #f8f9fa;
-            border: 1px solid #e9ecef;
-            border-radius: 8px;
-            padding: 16px;
-            margin-bottom: 12px;
-            cursor: pointer;
-            transition: all 0.2s ease;
-            position: relative;
-        }
-        
-        .message-card:hover {
-            border-color: #007bff;
-            background: #f1f8ff;
-            transform: translateX(2px);
-        }
-        
-        .message-card.unread {
-            border-left: 4px solid #007bff;
-            background: #ffffff;
-            box-shadow: 0 2px 4px rgba(0,123,255,0.1);
-        }
-        
-        .message-card.unread::before {
-            content: '';
-            position: absolute;
-            top: 16px;
-            right: 16px;
-            width: 8px;
-            height: 8px;
-            background: #007bff;
-            border-radius: 50%;
-        }
-        
-        .message-meta {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 8px;
-            font-size: 14px;
-        }
-        
-        .message-meta strong {
-            color: #333;
-            font-weight: 600;
-        }
-        
-        .message-meta .message-date {
-            color: #6c757d;
-        }
-        
-        .message-content {
-            color: #495057;
-            line-height: 1.5;
-            margin-bottom: 10px;
-            font-size: 14px;
-        }
-        
-        .message-actions {
-            display: flex;
-            justify-content: flex-end;
-            gap: 8px;
-        }
-        
-        .unread-badge {
-            background: #007bff;
-            color: white;
-            padding: 2px 8px;
-            border-radius: 12px;
-            font-size: 11px;
-            font-weight: 600;
-            letter-spacing: 0.5px;
-        }
-        
         .form-group {
             margin-bottom: 20px;
         }
@@ -350,6 +227,291 @@
             font-weight: bold;
             color: #007bff;
         }
+
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            backdrop-filter: blur(4px);
+        }
+
+        .modal-overlay.active {
+            display: flex;
+        }
+
+        .modal-container {
+            background: white;
+            width: 90%;
+            max-width: 800px;
+            max-height: 90%;
+            border-radius: 12px;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+            position: relative;
+            animation: modalSlideIn 0.3s ease-out;
+        }
+
+        @keyframes modalSlideIn {
+            from {
+                opacity: 0;
+                transform: scale(0.9) translateY(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: scale(1) translateY(0);
+            }
+        }
+
+        .modal-header {
+            padding: 20px;
+            background: #f8f9fa;
+            border-bottom: 1px solid #e9ecef;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .modal-title {
+            margin: 0;
+            font-size: 18px;
+            font-weight: 600;
+            color: #333;
+        }
+
+        .modal-close {
+            background: none;
+            border: none;
+            font-size: 24px;
+            color: #6c757d;
+            cursor: pointer;
+            padding: 0;
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            transition: all 0.2s ease;
+        }
+
+        .modal-close:hover {
+            background: #e9ecef;
+            color: #495057;
+        }
+
+        .modal-body {
+            padding: 20px;
+            max-height: 60vh;
+            overflow-y: auto;
+        }
+
+        .modal-message-tabs {
+            display: flex;
+            margin-bottom: 20px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 4px;
+        }
+
+        .modal-message-tab-btn {
+            flex: 1;
+            padding: 12px 20px;
+            border: none;
+            background: transparent;
+            color: #6c757d;
+            cursor: pointer;
+            border-radius: 6px;
+            transition: all 0.2s ease;
+            font-weight: 500;
+        }
+
+        .modal-message-tab-btn:hover {
+            background: #e9ecef;
+            color: #495057;
+        }
+
+        .modal-message-tab-btn.active {
+            background: white;
+            color: #007bff;
+            font-weight: 600;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .modal-message-list {
+            min-height: 300px;
+        }
+
+        .modal-message-card {
+            background: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-radius: 8px;
+            padding: 16px;
+            margin-bottom: 12px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            position: relative;
+        }
+
+        .modal-message-card:hover {
+            border-color: #007bff;
+            background: #f1f8ff;
+            transform: translateY(-1px);
+            box-shadow: 0 2px 8px rgba(0, 123, 255, 0.1);
+        }
+
+        .modal-message-card.unread {
+            border-left: 4px solid #007bff;
+            background: white;
+        }
+
+        .modal-message-card.unread::before {
+            content: '';
+            position: absolute;
+            top: 16px;
+            right: 16px;
+            width: 8px;
+            height: 8px;
+            background: #007bff;
+            border-radius: 50%;
+        }
+
+        .modal-message-meta {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+
+        .modal-message-meta strong {
+            color: #333;
+            font-weight: 600;
+        }
+
+        .modal-message-date {
+            color: #6c757d;
+        }
+
+        .modal-message-content {
+            color: #495057;
+            line-height: 1.5;
+            margin-bottom: 10px;
+            font-size: 14px;
+        }
+
+        .modal-message-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 8px;
+        }
+
+        .compose-btn {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .compose-btn:hover {
+            background: #0056b3;
+        }
+
+        .loading-modal {
+            text-align: center;
+            padding: 40px;
+            color: #6c757d;
+        }
+
+        .empty-state-modal {
+            text-align: center;
+            padding: 40px;
+            color: #6c757d;
+        }
+
+        .empty-state-modal h4 {
+            margin-bottom: 8px;
+            color: #495057;
+        }
+
+        .message-detail-modal .modal-container {
+            max-width: 600px;
+        }
+
+        .message-detail-header {
+            background: #f8f9fa;
+            padding: 16px 20px;
+            border-bottom: 1px solid #e9ecef;
+        }
+
+        .message-detail-header h4 {
+            margin: 0 0 8px 0;
+            color: #333;
+            font-size: 16px;
+        }
+
+        .message-detail-info {
+            display: flex;
+            justify-content: space-between;
+            font-size: 14px;
+            color: #6c757d;
+        }
+
+        .message-detail-content {
+            padding: 20px;
+            line-height: 1.6;
+            color: #333;
+            min-height: 200px;
+        }
+
+        .message-detail-actions {
+            padding: 20px;
+            border-top: 1px solid #e9ecef;
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+        }
+
+        .form-group-modal {
+            margin-bottom: 15px;
+        }
+
+        .form-group-modal label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 500;
+            color: #333;
+        }
+
+        .form-control-modal {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+
+        .form-control-modal:focus {
+            outline: none;
+            border-color: #007bff;
+            box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.1);
+        }
+
+        textarea.form-control-modal {
+            height: 150px;
+            resize: vertical;
+        }
     </style>
 </head>
 <body>
@@ -373,7 +535,7 @@
 
     <main class="main-content">
         <div class="container">
-                    <div id="loading" class="loading">
+            <div id="loading" class="loading">
                 <div class="spinner"></div>
                 <p>사용자 정보를 불러오는 중...</p>
             </div>
@@ -484,26 +646,6 @@
                         </div>
                     </div>
 
-                    <div id="messages-tab" class="tab-pane hidden">
-                        <div class="section-header">
-                            <h2>쪽지함</h2>
-                            <span id="message-tab-badge" class="badge hidden"></span>
-                        </div>
-
-                        <div class="message-tabs">
-                            <button class="message-tab-btn active" data-message-tab="received">받은 쪽지</button>
-                            <button class="message-tab-btn" data-message-tab="sent">보낸 쪽지</button>
-                        </div>
-
-                        <div id="received-messages" class="message-list">
-                            <div class="loading">로딩 중...</div>
-                        </div>
-
-                        <div id="sent-messages" class="message-list hidden">
-                            <div class="loading">로딩 중...</div>
-                        </div>
-                    </div>
-
                     <div id="stats-tab" class="tab-pane hidden">
                         <div class="section-header">
                             <h2>내 활동 통계</h2>
@@ -530,6 +672,68 @@
         </div>
     </main>
 
+    <div id="messageModal" class="modal-overlay">
+        <div class="modal-container">
+            <div class="modal-header">
+                <h3 class="modal-title">쪽지함</h3>
+                <button class="compose-btn" onclick="openComposeModal()">새 쪽지</button>
+                <button class="modal-close" onclick="closeMessageModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="modal-message-tabs">
+                    <button class="modal-message-tab-btn active" data-tab="received">받은 쪽지</button>
+                    <button class="modal-message-tab-btn" data-tab="sent">보낸 쪽지</button>
+                </div>
+                <div id="modal-received-messages" class="modal-message-list">
+                    <div class="loading-modal">받은 쪽지를 불러오는 중...</div>
+                </div>
+                <div id="modal-sent-messages" class="modal-message-list" style="display: none;">
+                    <div class="loading-modal">보낸 쪽지를 불러오는 중...</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="messageDetailModal" class="modal-overlay message-detail-modal">
+        <div class="modal-container">
+            <div class="modal-header">
+                <h3 class="modal-title">쪽지 상세보기</h3>
+                <button class="modal-close" onclick="closeMessageDetailModal()">&times;</button>
+            </div>
+            <div id="messageDetailContent" class="modal-body"></div>
+        </div>
+    </div>
+
+    <div id="composeModal" class="modal-overlay">
+        <div class="modal-container">
+            <div class="modal-header">
+                <h3 class="modal-title">새 쪽지 작성</h3>
+                <button class="modal-close" onclick="closeComposeModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="composeForm">
+                    <div class="form-group-modal" id="receiverContainer">
+                        <label for="receiverNickname">받는 사람</label>
+                        <input type="text" id="receiverNickname" class="form-control-modal" placeholder="닉네임을 입력하세요">
+                        <input type="hidden" id="receiverId">
+                    </div>
+                    <div class="form-group-modal">
+                        <label for="messageTitle">제목</label>
+                        <input type="text" id="messageTitle" class="form-control-modal" placeholder="제목을 입력하세요">
+                    </div>
+                    <div class="form-group-modal">
+                        <label for="messageContent">내용</label>
+                        <textarea id="messageContent" class="form-control-modal" placeholder="내용을 입력하세요"></textarea>
+                    </div>
+                    <div style="text-align: right;">
+                        <button type="button" class="btn btn-outline" onclick="closeComposeModal()">취소</button>
+                        <button type="submit" class="btn btn-primary" style="margin-left: 8px;">전송</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
     <div id="message-notification-badge" class="notification-badge hidden"></div>
     <script src="/static/js/utils/constants.js"></script>
     <script src="/static/js/utils/helpers.js"></script>
@@ -542,7 +746,5 @@
     <script src="/static/js/components/header.js"></script>
     <script src="/static/js/pages/myPage.js"></script>
     <script src="/static/js/app.js"></script>
-    
-   
 </body>
 </html>

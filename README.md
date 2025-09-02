@@ -31,7 +31,7 @@
 ---
 
 ## 🗂️ ERD (Database Schema)
-![ERD](./docs/erd.png)
+![ERD](./docs/ERD.png)
 
 ---
 
@@ -40,7 +40,7 @@
 ### 로그인 & 회원가입
 | 로그인 | 회원가입 |
 |--------|-----------|
-| ![login](./docs/login.png) | ![register](./docs/register.png) |
+| ![login](./docs/login.png) | ![register](./docs/Register.png) |
 
 ### 게시판
 | 글 목록 | 글 작성 | 글 상세 |

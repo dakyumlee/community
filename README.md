@@ -178,7 +178,7 @@ spring:
   datasource:
     url: jdbc:oracle:thin:@localhost:1521/XEPDB1
     username: community
-    password: community123
+    password: password
   mybatis:
     mapper-locations: classpath:/mapper/**/*.xml
 ```

@@ -176,7 +176,7 @@ cd community
 ```yaml
 spring:
   datasource:
-    url: jdbc:oracle:thin:@localhost:1521/XEPDB1
+    url: jdbc:oracle:thin:@localhost:1521/XE
     username: community
     password: password
   mybatis:

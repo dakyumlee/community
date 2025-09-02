@@ -164,7 +164,7 @@ public ResponseEntity<List<User>> getAllUsers() {
 
 ### 1. 프로젝트 클론
 ```bash
-git clone https://github.com/{username}/community.git
+git clone https://github.com/dakyumlee/community.git
 cd community
 ```
 
